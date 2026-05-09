@@ -5,7 +5,7 @@ import subprocess
 import argparse
 import re
 import sys
-from scenedetect import SceneManager, open_video, ContentDetector, FrameTimecode
+from scenedetect import SceneManager, open_video
 from scenedetect.detectors import ContentDetector
 from ultralytics import YOLO
 import torch
