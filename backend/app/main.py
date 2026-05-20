@@ -1179,25 +1179,23 @@ async def add_subtitles(req: SubtitleRequest):
         print(f"❌ Subtitle Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
         
-    # 3. Update Result and Metadata
-    # Update InMemory Jobs
-    if 0 <= req.clip_index < len(job['result']['clips']):
-         job['result']['clips'][req.clip_index]['video_url'] = f"/videos/{req.job_id}/{output_filename}"
+    # 3. Update Result and Metadata — under the per-job lock so concurrent
+    # /api/subtitle + /api/colorgrade calls on the same clip serialize.
+    with _job_lock(req.job_id):
+        # Update InMemory Jobs
+        if 0 <= req.clip_index < len(job['result']['clips']):
+             job['result']['clips'][req.clip_index]['video_url'] = f"/videos/{req.job_id}/{output_filename}"
 
-    # Update Metadata on Disk (Persistence)
-    try:
-        if 0 <= req.clip_index < len(clips):
-            clips[req.clip_index]['video_url'] = f"/videos/{req.job_id}/{output_filename}"
-            # Update the main data structure
-            data['shorts'] = clips
-            
-            # Write back
-            with open(json_files[0], 'w') as f:
-                json.dump(data, f, indent=4)
+        # Update Metadata on Disk (Persistence) — atomic-rename write
+        try:
+            if 0 <= req.clip_index < len(clips):
+                clips[req.clip_index]['video_url'] = f"/videos/{req.job_id}/{output_filename}"
+                data['shorts'] = clips
+                _atomic_write_json(json_files[0], data)
                 print(f"✅ Metadata updated with subtitled video for clip {req.clip_index}")
-    except Exception as e:
-        print(f"⚠️ Failed to update metadata.json: {e}")
-        # Non-critical, but good for persistence
+        except Exception as e:
+            print(f"⚠️ Failed to update metadata.json: {e}")
+            # Non-critical, but good for persistence
 
     return {
         "success": True,
@@ -1263,26 +1261,64 @@ def _resolve_clip_input(job_id: str, clip_index: int, input_filename: Optional[s
     return job, output_dir, input_path, filename
 
 
-def _persist_clip_url(job_id: str, clip_index: int, new_filename: str) -> None:
-    """Write the new clip URL back to in-memory jobs[] and to metadata.json."""
-    new_url = f"/videos/{job_id}/{new_filename}"
-    job = jobs.get(job_id)
-    if job and 0 <= clip_index < len(job['result']['clips']):
-        job['result']['clips'][clip_index]['video_url'] = new_url
+# ---------------------------------------------------------------------------
+# Per-job locks. Codex Phase 5 audit (focus 4) flagged that ``jobs[]`` +
+# ``metadata.json`` were mutated by concurrent route handlers and background
+# threads with no synchronization, so concurrent ``/api/colorgrade`` and
+# ``/api/silencecut`` on the same clip could lose an update (read-modify-write
+# race against the JSON file). The lock is granular per ``job_id`` so jobs
+# don't contend with each other.
+#
+# Use ``threading.Lock`` (not asyncio.Lock) because the mutators are called
+# from inside ``run_in_executor`` (sync code on a worker thread).
+# ---------------------------------------------------------------------------
+_JOB_LOCKS: Dict[str, threading.Lock] = {}
+_JOB_LOCKS_GUARD = threading.Lock()
 
-    try:
-        json_files = glob.glob(os.path.join(OUTPUT_DIR, job_id, "*_metadata.json"))
-        if json_files:
-            with open(json_files[0], 'r') as f:
-                data = json.load(f)
-            clips = data.get('shorts', [])
-            if 0 <= clip_index < len(clips):
-                clips[clip_index]['video_url'] = new_url
-                data['shorts'] = clips
-                with open(json_files[0], 'w') as f:
-                    json.dump(data, f, indent=4)
-    except Exception as exc:
-        print(f"⚠️ Failed to update metadata.json for clip url: {exc}")
+
+def _job_lock(job_id: str) -> threading.Lock:
+    """Return the per-job lock, creating it lazily."""
+    with _JOB_LOCKS_GUARD:
+        lock = _JOB_LOCKS.get(job_id)
+        if lock is None:
+            lock = threading.Lock()
+            _JOB_LOCKS[job_id] = lock
+        return lock
+
+
+def _atomic_write_json(path: str, data: dict) -> None:
+    """Write ``data`` to ``path`` atomically via tmp file + os.replace."""
+    tmp_path = f"{path}.tmp-{os.getpid()}-{threading.get_ident()}"
+    with open(tmp_path, "w") as f:
+        json.dump(data, f, indent=4)
+    os.replace(tmp_path, path)
+
+
+def _persist_clip_url(job_id: str, clip_index: int, new_filename: str) -> None:
+    """Write the new clip URL back to in-memory jobs[] and to metadata.json.
+
+    Holds the per-job lock for the entire read-modify-write so concurrent
+    callers serialize; writes the JSON via atomic-rename so a crashed
+    process can never leave a half-written metadata.json on disk.
+    """
+    new_url = f"/videos/{job_id}/{new_filename}"
+    with _job_lock(job_id):
+        job = jobs.get(job_id)
+        if job and 0 <= clip_index < len(job['result']['clips']):
+            job['result']['clips'][clip_index]['video_url'] = new_url
+
+        try:
+            json_files = glob.glob(os.path.join(OUTPUT_DIR, job_id, "*_metadata.json"))
+            if json_files:
+                with open(json_files[0], 'r') as f:
+                    data = json.load(f)
+                clips = data.get('shorts', [])
+                if 0 <= clip_index < len(clips):
+                    clips[clip_index]['video_url'] = new_url
+                    data['shorts'] = clips
+                    _atomic_write_json(json_files[0], data)
+        except Exception as exc:
+            print(f"⚠️ Failed to update metadata.json for clip url: {exc}")
 
 
 @app.post("/api/colorgrade")
