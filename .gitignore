@@ -50,3 +50,7 @@ backend/tests/fixtures/smoke.mp4
 skills/
 skills-lock.json
 
+# Session-local artifacts (handovers, test screenshots) — not for git
+.session/
+.compact-ultra
+
