@@ -15,7 +15,7 @@
 //   - Send to CapCut: placeholder — backend integration TODO.
 
 import { useEffect, useMemo, useState } from 'react';
-import { Download, Eye, Loader2, Plus, Scissors } from 'lucide-react';
+import { ArrowDown, ArrowUp, Combine, Download, Eye, Loader2, Plus, Scissors, X } from 'lucide-react';
 import PhoneFrame from '../../../components/ui/PhoneFrame.jsx';
 import PlatformBadge from '../../../components/ui/PlatformBadge.jsx';
 import { getApiUrl } from '../../../config';
@@ -87,13 +87,22 @@ export default function Review({ wizard }) {
   const files = wizard.data.files || [];
   const jobs = wizard.data.jobs || {};
   const clips = useMemo(() => flattenClips(jobs, files), [jobs, files]);
+  const mergedClips = wizard.data.mergedClips || [];
   const [selected, setSelected] = useState(0);
+  const [selectedMergedId, setSelectedMergedId] = useState(null);
   const [showOriginal, setShowOriginal] = useState(false);
   const [sourceUrl, setSourceUrl] = useState(null);
 
   // Per-clip transient state — loading flag + last error. Lost on reload (OK).
   const [pendingStage, setPendingStage] = useState(null); // { clipKey, stageKey }
   const [stageError, setStageError] = useState(null);     // { clipKey, message }
+
+  // Merge UI state.
+  const [mergeChecked, setMergeChecked] = useState({});   // clipKey -> bool
+  const [mergeModalOpen, setMergeModalOpen] = useState(false);
+  const [modalOrder, setModalOrder] = useState([]);       // clipKey[]
+  const [merging, setMerging] = useState(false);
+  const [mergeError, setMergeError] = useState(null);
 
   const keys = useKeys();
   const brand = useBrandKit();
@@ -115,9 +124,14 @@ export default function Review({ wizard }) {
   // deepest existing variant, then to the polished URL the backend set, then
   // to the raw clip URL (covers legacy clips without a variants dict).
   const stageFilename = variants?.[selectedStage] || variants?.polished || null;
-  const clipUrl = stageFilename
+  const baseClipUrl = stageFilename
     ? getApiUrl(`/videos/${current.jobId}/${stageFilename}`)
     : (current?.clip?.video_url ? getApiUrl(current.clip.video_url) : null);
+  // Merged previews override everything: a merged output has no variants.
+  const activeMergedClip = selectedMergedId
+    ? (wizard.data.mergedClips || []).find((m) => m.id === selectedMergedId)
+    : null;
+  const clipUrl = activeMergedClip ? getApiUrl(activeMergedClip.url) : baseClipUrl;
 
   // Build a blob URL for the original source file — only available when
   // the wizard has the in-memory File (lost after reload).
@@ -300,6 +314,115 @@ export default function Review({ wizard }) {
     }
   }
 
+  // --- Merge helpers --------------------------------------------------------
+  // Restrict selection to a single job's clips so /api/merge (which takes one
+  // job_id) stays valid. Once a clip is checked, lock the candidate set.
+  const checkedClipKeys = Object.keys(mergeChecked).filter((k) => mergeChecked[k]);
+  const lockedJobId = checkedClipKeys.length > 0
+    ? clips.find((c) => clipKey(c) === checkedClipKeys[0])?.jobId
+    : null;
+
+  function isMergeable(c) {
+    return !lockedJobId || c.jobId === lockedJobId;
+  }
+
+  function toggleMergeCheck(c) {
+    const k = clipKey(c);
+    setMergeChecked((prev) => {
+      const next = { ...prev };
+      if (next[k]) delete next[k];
+      else next[k] = true;
+      return next;
+    });
+  }
+
+  function clearMergeSelection() {
+    setMergeChecked({});
+    setMergeError(null);
+  }
+
+  function openMergeModal() {
+    const ordered = clips
+      .filter((c) => mergeChecked[clipKey(c)])
+      .map((c) => clipKey(c));
+    setModalOrder(ordered);
+    setMergeError(null);
+    setMergeModalOpen(true);
+  }
+
+  function reorderModal(fromIdx, toIdx) {
+    setModalOrder((prev) => {
+      if (toIdx < 0 || toIdx >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return next;
+    });
+  }
+
+  function removeFromModal(k) {
+    setModalOrder((prev) => prev.filter((x) => x !== k));
+    setMergeChecked((prev) => {
+      const next = { ...prev };
+      delete next[k];
+      return next;
+    });
+  }
+
+  async function submitMerge() {
+    if (modalOrder.length < 2) {
+      setMergeError('Need at least 2 clips to merge');
+      return;
+    }
+    const ordered = modalOrder
+      .map((k) => clips.find((c) => clipKey(c) === k))
+      .filter(Boolean);
+    if (ordered.length < 2) {
+      setMergeError('Selected clips no longer available');
+      return;
+    }
+    const jobId = ordered[0].jobId;
+    const indices = ordered.map((c) => c.clipIndex);
+    setMerging(true);
+    setMergeError(null);
+    try {
+      const res = await fetch(getApiUrl('/api/merge'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: jobId,
+          clip_indices: indices,
+          use_processed: true,
+          transition: 'cut',
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      const url = data.new_video_url;
+      if (!url) throw new Error('Empty response from backend');
+      const merged = {
+        id: `m-${jobId}-${indices.join('_')}-${Date.now()}`,
+        jobId,
+        indices,
+        url,
+        label: `Merged ${indices.map((i) => `#${i + 1}`).join(' + ')}`,
+        createdAt: Date.now(),
+      };
+      wizard.setData((prev) => ({
+        ...prev,
+        mergedClips: [...(prev.mergedClips || []), merged],
+      }));
+      setSelectedMergedId(merged.id);
+      setMergeModalOpen(false);
+      setMergeChecked({});
+      setModalOrder([]);
+    } catch (e) {
+      setMergeError(String(e.message || e));
+    } finally {
+      setMerging(false);
+    }
+  }
+
   function publish(platform, scheduled) {
     if (!current) return;
     pushNotification({
@@ -332,45 +455,94 @@ export default function Review({ wizard }) {
           {clips.length} clip{clips.length === 1 ? '' : 's'}
         </div>
         {clips.map((c, i) => {
-          const active = i === selected;
+          const active = i === selected && !selectedMergedId;
           const clipTitle = c.clip?.video_title_for_youtube_short || c.clip?.title;
+          const k = clipKey(c);
+          const checked = !!mergeChecked[k];
+          const mergeable = isMergeable(c);
           return (
-            <button
-              key={`${c.jobId}-${c.clipIndex}`}
-              onClick={() => { setSelected(i); setShowOriginal(false); }}
-              className={`w-full text-left rounded-lg p-2 transition-colors ${
+            <div
+              key={k}
+              className={`w-full rounded-lg p-2 transition-colors flex items-start gap-2 ${
                 active ? 'bg-primary/15 border border-primary/30' : 'border border-transparent hover:bg-white/5'
               }`}
             >
-              <div className={`text-[12px] font-medium truncate ${active ? 'text-white' : 'text-zinc-300'}`}>
-                Clip {i + 1}
-              </div>
-              <div className="text-[10px] text-zinc-500 truncate mt-0.5">{c.sourceName}</div>
-              {clipTitle && (
-                <div className="text-[10px] text-zinc-400 truncate mt-1 italic">"{clipTitle}"</div>
-              )}
-            </button>
+              <input
+                type="checkbox"
+                aria-label={`Select clip ${i + 1} to merge`}
+                checked={checked}
+                disabled={!mergeable && !checked}
+                onChange={() => toggleMergeCheck(c)}
+                title={mergeable ? 'Include in merge' : 'Merge only works within one source video'}
+                className="mt-0.5 accent-primary disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <button
+                type="button"
+                onClick={() => { setSelected(i); setSelectedMergedId(null); setShowOriginal(false); }}
+                className="flex-1 text-left min-w-0"
+              >
+                <div className={`text-[12px] font-medium truncate ${active ? 'text-white' : 'text-zinc-300'}`}>
+                  Clip {i + 1}
+                </div>
+                <div className="text-[10px] text-zinc-500 truncate mt-0.5">{c.sourceName}</div>
+                {clipTitle && (
+                  <div className="text-[10px] text-zinc-400 truncate mt-1 italic">"{clipTitle}"</div>
+                )}
+              </button>
+            </div>
           );
         })}
+
+        {mergedClips.length > 0 && (
+          <div className="pt-3 mt-2 border-t border-border space-y-1">
+            <div className="text-[11px] uppercase tracking-wider text-zinc-500 px-2 mb-1">
+              Merged outputs
+            </div>
+            {mergedClips.map((m) => {
+              const active = selectedMergedId === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => { setSelectedMergedId(m.id); setShowOriginal(false); }}
+                  className={`w-full text-left rounded-lg p-2 transition-colors flex items-center gap-2 ${
+                    active ? 'bg-primary/15 border border-primary/30' : 'border border-transparent hover:bg-white/5'
+                  }`}
+                >
+                  <Combine size={12} className="text-zinc-400 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className={`text-[12px] font-medium truncate ${active ? 'text-white' : 'text-zinc-300'}`}>
+                      {m.label}
+                    </div>
+                    <div className="text-[10px] text-zinc-500 truncate">{m.indices.length} clips</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 flex flex-col items-center gap-4">
-          <div className="flex items-center gap-2 text-[12px]">
-            <button
-              onClick={() => setShowOriginal(false)}
-              className={`px-3 py-1.5 rounded-md ${!showOriginal ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white'}`}
-            >
-              After
-            </button>
-            <button
-              onClick={() => setShowOriginal(true)}
-              disabled={!sourceUrl}
-              className={`px-3 py-1.5 rounded-md disabled:opacity-30 disabled:cursor-not-allowed ${showOriginal ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white'}`}
-            >
-              <Eye size={12} className="inline mr-1" /> Before
-            </button>
-          </div>
+          {!activeMergedClip && (
+            <div className="flex items-center gap-2 text-[12px]">
+              <button
+                onClick={() => setShowOriginal(false)}
+                className={`px-3 py-1.5 rounded-md ${!showOriginal ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white'}`}
+              >
+                After
+              </button>
+              <button
+                onClick={() => setShowOriginal(true)}
+                disabled={!sourceUrl}
+                className={`px-3 py-1.5 rounded-md disabled:opacity-30 disabled:cursor-not-allowed ${showOriginal ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white'}`}
+              >
+                <Eye size={12} className="inline mr-1" /> Before
+              </button>
+            </div>
+          )}
 
           <PhoneFrame size="md">
             {showOriginal && sourceUrl ? (
@@ -382,10 +554,16 @@ export default function Review({ wizard }) {
             )}
           </PhoneFrame>
 
+          {activeMergedClip && (
+            <div className="text-[11px] text-zinc-400 max-w-md text-center" role="status">
+              Preview of the merged output — no further editing available. Download from the bar below.
+            </div>
+          )}
+
           {/* Stage selector — segmented row. Lights up the currently-displayed
               variant and exposes a [+] on each missing stage so the user can
               fill it in without leaving Review. */}
-          {!showOriginal && current && (
+          {!showOriginal && current && !activeMergedClip && (
             <div className="flex flex-col items-center gap-2">
               <div className="inline-flex rounded-lg border border-border bg-surface p-0.5 text-[12px]">
                 {STAGES.map((stage) => {
@@ -448,7 +626,7 @@ export default function Review({ wizard }) {
             </div>
           )}
 
-          {title && (
+          {title && !activeMergedClip && (
             <div className="text-center max-w-md">
               <div className="text-[13px] text-white font-medium">{title}</div>
               {description && (
@@ -459,6 +637,28 @@ export default function Review({ wizard }) {
         </div>
 
         <div className="border-t border-border bg-surface px-4 py-3 flex flex-wrap items-center gap-3 shrink-0">
+          {checkedClipKeys.length >= 2 && (
+            <button
+              type="button"
+              onClick={openMergeModal}
+              className="btn-primary px-3 py-2 text-[12px] flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500"
+              title="Stitch the selected clips into one MP4"
+            >
+              <Combine size={12} /> Merge {checkedClipKeys.length} selected
+            </button>
+          )}
+          {checkedClipKeys.length > 0 && checkedClipKeys.length < 2 && (
+            <span className="text-[11px] text-zinc-500">Select at least 2 clips to merge</span>
+          )}
+          {checkedClipKeys.length > 0 && (
+            <button
+              type="button"
+              onClick={clearMergeSelection}
+              className="text-[11px] text-zinc-400 hover:text-white underline-offset-2 hover:underline"
+            >
+              Clear
+            </button>
+          )}
           <a
             href={clipUrl || '#'}
             download
@@ -491,6 +691,104 @@ export default function Review({ wizard }) {
           </button>
         </div>
       </div>
+
+      {mergeModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm merge order"
+          onClick={() => !merging && setMergeModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-surface border border-border rounded-xl p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h2 className="text-[14px] text-white font-semibold flex items-center gap-2">
+                <Combine size={14} /> Merge clips
+              </h2>
+              <p className="text-[11px] text-zinc-500 mt-1">
+                Reorder, remove, then re-render. The merged file appears under "Merged outputs" in the sidebar.
+              </p>
+            </div>
+
+            <ul className="space-y-1.5">
+              {modalOrder.map((k, idx) => {
+                const c = clips.find((x) => clipKey(x) === k);
+                if (!c) return null;
+                const title = c.clip?.video_title_for_youtube_short || c.clip?.title;
+                return (
+                  <li
+                    key={k}
+                    className="flex items-center gap-2 bg-background border border-border rounded-md p-2"
+                  >
+                    <div className="text-[11px] text-zinc-500 w-5 text-right">{idx + 1}.</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] text-white truncate">Clip {c.clipIndex + 1}</div>
+                      {title && <div className="text-[10px] text-zinc-500 truncate italic">"{title}"</div>}
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Move up"
+                      disabled={idx === 0 || merging}
+                      onClick={() => reorderModal(idx, idx - 1)}
+                      className="p-1 text-zinc-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"
+                    >
+                      <ArrowUp size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Move down"
+                      disabled={idx === modalOrder.length - 1 || merging}
+                      onClick={() => reorderModal(idx, idx + 1)}
+                      className="p-1 text-zinc-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"
+                    >
+                      <ArrowDown size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Remove"
+                      disabled={merging}
+                      onClick={() => removeFromModal(k)}
+                      className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-20"
+                    >
+                      <X size={12} />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {mergeError && (
+              <div className="text-[11px] text-red-400" role="alert">{mergeError}</div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setMergeModalOpen(false)}
+                disabled={merging}
+                className="px-3 py-1.5 text-[12px] text-zinc-400 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitMerge}
+                disabled={merging || modalOrder.length < 2}
+                className="btn-primary px-3 py-1.5 text-[12px] flex items-center gap-2 disabled:opacity-50"
+              >
+                {merging ? (
+                  <><Loader2 size={12} className="animate-spin" /> Re-rendering…</>
+                ) : (
+                  <>Re-render</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

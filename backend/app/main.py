@@ -1336,6 +1336,96 @@ async def silence_cut_clip(req: SilenceCutRequest):
     }
 
 
+# ---------------------------------------------------------------------------
+# Phase 4: merge multiple clips into a single MP4 via FFmpeg concat.
+# ---------------------------------------------------------------------------
+
+ALLOWED_MERGE_TRANSITIONS = ("cut",)
+
+
+class MergeRequest(BaseModel):
+    job_id: str
+    clip_indices: List[int] = Field(..., min_length=2, max_length=50)
+    use_processed: bool = True
+    transition: str = "cut"
+
+    @field_validator("transition", mode="before")
+    @classmethod
+    def _check_transition(cls, v: Any) -> str:
+        s = str(v or "cut").strip().lower()
+        if s not in ALLOWED_MERGE_TRANSITIONS:
+            raise ValueError(
+                f"transition must be one of {sorted(ALLOWED_MERGE_TRANSITIONS)}"
+            )
+        return s
+
+
+from app.video.merge import concat_clips  # noqa: E402  — kept near use site
+
+
+@app.post("/api/merge")
+async def merge_clips(req: MergeRequest):
+    """Concat the selected clips of a job into a single ``merged_*.mp4``."""
+    if req.job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job = jobs[req.job_id]
+    if 'result' not in job or 'clips' not in job['result']:
+        raise HTTPException(status_code=400, detail="Job result not available")
+    clips = job['result']['clips']
+    clip_count = len(clips)
+
+    # Dedup preserving first-occurrence order.
+    seen = set()
+    ordered: List[int] = []
+    for idx in req.clip_indices:
+        if idx < 0 or idx >= clip_count:
+            raise HTTPException(
+                status_code=400,
+                detail=f"clip_index {idx} out of range (0..{clip_count - 1})",
+            )
+        if idx not in seen:
+            seen.add(idx)
+            ordered.append(idx)
+    if len(ordered) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="At least 2 distinct clip_indices are required to merge",
+        )
+
+    output_dir = os.path.join(OUTPUT_DIR, req.job_id)
+    input_paths: List[str] = []
+    for idx in ordered:
+        url = clips[idx].get('video_url', '')
+        filename = url.split('/')[-1] if req.use_processed else f"_clip_{idx}.mp4"
+        if not filename:
+            raise HTTPException(status_code=400, detail=f"Clip {idx} has no source file")
+        path = os.path.join(output_dir, filename)
+        if not os.path.exists(path):
+            raise HTTPException(status_code=404, detail=f"Clip file not found: {filename}")
+        input_paths.append(path)
+
+    out_filename = f"merged_{'_'.join(str(i) for i in ordered)}.mp4"
+    output_path = os.path.join(output_dir, out_filename)
+
+    loop = asyncio.get_event_loop()
+    try:
+        await loop.run_in_executor(
+            None,
+            partial(concat_clips, input_paths, output_path),
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        print(f"❌ Merge Error: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {
+        "success": True,
+        "clip_indices": ordered,
+        "new_video_url": f"/videos/{req.job_id}/{out_filename}",
+    }
+
+
 class HookRequest(BaseModel):
     job_id: str
     clip_index: int

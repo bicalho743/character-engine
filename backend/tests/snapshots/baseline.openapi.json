@@ -479,6 +479,39 @@
         "title": "HookRequest",
         "type": "object"
       },
+      "MergeRequest": {
+        "properties": {
+          "clip_indices": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 50,
+            "minItems": 2,
+            "title": "Clip Indices",
+            "type": "array"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "transition": {
+            "default": "cut",
+            "title": "Transition",
+            "type": "string"
+          },
+          "use_processed": {
+            "default": true,
+            "title": "Use Processed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "job_id",
+          "clip_indices"
+        ],
+        "title": "MergeRequest",
+        "type": "object"
+      },
       "SaaSActorRequest": {
         "properties": {
           "actor_description": {
@@ -1433,6 +1466,43 @@
           }
         },
         "summary": "Add Hook"
+      }
+    },
+    "/api/merge": {
+      "post": {
+        "description": "Concat the selected clips of a job into a single ``merged_*.mp4``.",
+        "operationId": "merge_clips_api_merge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Merge Clips"
       }
     },
     "/api/process": {
