@@ -43,7 +43,16 @@ def transcribe_audio(video_path):
     return transcript
 
 
-def generate_srt_from_video(video_path, output_path, max_chars=20, max_duration=2.0):
+def _apply_text_case(text: str, text_case: str) -> str:
+    """Brand-kit case transform: 'upper' / 'lower' / anything else = original."""
+    if text_case == "upper":
+        return text.upper()
+    if text_case == "lower":
+        return text.lower()
+    return text
+
+
+def generate_srt_from_video(video_path, output_path, max_chars=20, max_duration=2.0, max_words=None, text_case="original"):
     """
     Transcribe a video and generate SRT directly.
     Used for dubbed videos that don't have a pre-existing transcript.
@@ -58,13 +67,17 @@ def generate_srt_from_video(video_path, output_path, max_chars=20, max_duration=
     duration = frame_count / fps if fps else 0
     cap.release()
 
-    return generate_srt(transcript, 0, duration, output_path, max_chars, max_duration)
+    return generate_srt(transcript, 0, duration, output_path, max_chars, max_duration, max_words=max_words, text_case=text_case)
 
 
-def generate_srt(transcript, clip_start, clip_end, output_path, max_chars=20, max_duration=2.0):
+def generate_srt(transcript, clip_start, clip_end, output_path, max_chars=20, max_duration=2.0, max_words=None, text_case="original"):
     """
     Generates an SRT file from the transcript for a specific time range.
     Groups words into short lines suitable for vertical video.
+
+    ``max_words`` (optional) overrides character-based grouping with a fixed
+    words-per-line cap — set from the brand kit. None = use char heuristic only.
+    ``text_case`` applies the brand-kit casing: "original" | "upper" | "lower".
     """
 
     words = []
@@ -99,13 +112,19 @@ def generate_srt(transcript, clip_start, clip_end, output_path, max_chars=20, ma
             current_text_len = sum(len(w['word']) + 1 for w in current_block)
             duration = end - block_start
 
-            if current_text_len + len(word['word']) > max_chars or duration > max_duration:
+            # Honor explicit words-per-line cap (brand kit) if set; falls back
+            # to character heuristic otherwise.
+            words_exceeded = max_words is not None and len(current_block) >= max_words
+            chars_exceeded = max_words is None and (current_text_len + len(word['word']) > max_chars)
+
+            if words_exceeded or chars_exceeded or duration > max_duration:
                 # Finalize current block
                 # End time of block is start of this word (gap) or end of last word?
                 # Usually end of last word.
                 block_end = current_block[-1]['end'] - clip_start
 
                 text = " ".join([w['word'] for w in current_block]).strip()
+                text = _apply_text_case(text, text_case)
                 srt_content += format_srt_block(index, block_start, block_end, text)
                 index += 1
 
@@ -118,6 +137,7 @@ def generate_srt(transcript, clip_start, clip_end, output_path, max_chars=20, ma
     if current_block:
         block_end = current_block[-1]['end'] - clip_start
         text = " ".join([w['word'] for w in current_block]).strip()
+        text = _apply_text_case(text, text_case)
         srt_content += format_srt_block(index, block_start, block_end, text)
 
     with open(output_path, 'w', encoding='utf-8') as f:

@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
 import { X, Sparkles, Loader2, Maximize, MoveVertical, Zap } from 'lucide-react';
 import RemotionPreview from './RemotionPreview';
+import { useBrandKit } from '../lib/brandKit';
+
+// Map 9-anchor brand position to the modal's simpler 3-position (top/middle/bottom).
+function anchorToVerticalPosition(anchor) {
+    if (anchor?.startsWith('top'))    return 'top';
+    if (anchor?.startsWith('middle')) return 'middle';
+    return 'bottom';
+}
+function sizeToBucket(px) {
+    if (px >= 96) return 'L';
+    if (px >= 60) return 'M';
+    return 'S';
+}
 
 const ENTRANCE_OPTIONS = [
     { value: 'spring', label: 'Bounce' },
@@ -10,9 +23,11 @@ const ENTRANCE_OPTIONS = [
 ];
 
 export default function HookModal({ isOpen, onClose, onGenerate, isProcessing, videoUrl, initialText, durationInSeconds, existingSubtitles }) {
+    const brandKit = useBrandKit();
+    const bkStyle  = brandKit.styles['9:16'];
     const [text, setText] = useState(initialText || 'POV: You are using the viral hook feature');
-    const [position, setPosition] = useState('top');
-    const [size, setSize] = useState('M');
+    const [position, setPosition] = useState(anchorToVerticalPosition(bkStyle.position));
+    const [size, setSize] = useState(sizeToBucket(bkStyle.size));
     const [entranceAnimation, setEntranceAnimation] = useState('spring');
     const [displayDuration, setDisplayDuration] = useState(5);
 

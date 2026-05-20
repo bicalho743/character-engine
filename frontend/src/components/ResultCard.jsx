@@ -179,6 +179,8 @@ export default function ResultCard({ clip, index, jobId, uploadPostKey, uploadUs
                     border_width: options.borderWidth,
                     bg_color: options.bgColor,
                     bg_opacity: options.bgOpacity,
+                    words_per_line: options.wordsPerLine,
+                    text_case: options.textCase,
                     input_filename: currentVideoUrl.split('/').pop()
                 })
             });

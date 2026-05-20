@@ -566,6 +566,10 @@ class SubtitleRequest(BaseModel):
     border_width: int = 2
     bg_color: str = "#000000"
     bg_opacity: float = 0.0
+    # Max words per subtitle line (0 = no wrap). From brand kit.
+    words_per_line: Optional[int] = None
+    # Text case: "original" | "upper" | "lower". From brand kit.
+    text_case: Optional[str] = None
     input_filename: Optional[str] = None
 
 
@@ -812,15 +816,20 @@ async def add_subtitles(req: SubtitleRequest):
         # Check if this is a dubbed video - if so, transcribe it fresh
         is_dubbed = filename.startswith("translated_")
 
+        # Brand-kit words-per-line: if provided, cap line length to N words.
+        max_words = req.words_per_line if (req.words_per_line and req.words_per_line > 0) else None
+        # Brand-kit text case: 'original' (default) | 'upper' | 'lower'.
+        text_case = req.text_case or 'original'
+
         if is_dubbed:
             print(f"🎙️ Dubbed video detected, transcribing audio for subtitles...")
             def run_transcribe_srt():
-                return generate_srt_from_video(input_path, srt_path)
+                return generate_srt_from_video(input_path, srt_path, max_words=max_words, text_case=text_case)
 
             loop = asyncio.get_event_loop()
             success = await loop.run_in_executor(None, run_transcribe_srt)
         else:
-            success = generate_srt(transcript, clip_data['start'], clip_data['end'], srt_path)
+            success = generate_srt(transcript, clip_data['start'], clip_data['end'], srt_path, max_words=max_words, text_case=text_case)
 
         if not success:
              raise HTTPException(status_code=400, detail="No words found for this clip range.")
@@ -2258,3 +2267,119 @@ async def saasshorts_voices(
         ],
         "source": "defaults",
     }
+
+
+# ============================================================================
+# Brand Kit: fonts upload + listing + serving
+# ============================================================================
+
+from fastapi.responses import FileResponse
+from pathlib import Path as _Path
+
+# Resolve assets/fonts relative to repo root (walk up from this file)
+def _resolve_assets_fonts_dir() -> _Path:
+    for parent in _Path(__file__).resolve().parents:
+        candidate = parent / "assets" / "fonts"
+        if candidate.is_dir():
+            return candidate
+    raise RuntimeError("assets/fonts directory not found")
+
+
+_ASSETS_FONTS = _resolve_assets_fonts_dir()
+_USER_FONTS = _ASSETS_FONTS / "user"
+_USER_FONTS.mkdir(parents=True, exist_ok=True)
+
+_FONT_EXTS = {".ttf", ".otf", ".woff", ".woff2"}
+_FONT_MIME = {
+    ".ttf": "font/ttf",
+    ".otf": "font/otf",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+}
+
+
+@app.get("/api/fonts")
+async def list_fonts():
+    """Return the catalog of available fonts (system + user-uploaded)."""
+    fonts: List[dict] = []
+
+    # System fonts ship with Docker image; expose a sensible curated list so the
+    # UI doesn't have to enumerate the entire filesystem.
+    system_default = [
+        "Inter", "Roboto", "Arial", "Verdana", "Tahoma",
+        "Times New Roman", "Georgia", "Courier New", "Impact",
+    ]
+    for name in system_default:
+        fonts.append({"name": name, "source": "system", "url": None})
+
+    # NotoSerif-Bold ships in assets/fonts (used by hook overlays).
+    for f in sorted(_ASSETS_FONTS.glob("*.ttf")):
+        if f.parent == _USER_FONTS:
+            continue
+        fonts.append({
+            "name": f.stem,
+            "source": "bundled",
+            "url": f"/api/fonts/file/{f.name}",
+        })
+
+    # User-uploaded fonts.
+    for ext in _FONT_EXTS:
+        for f in sorted(_USER_FONTS.glob(f"*{ext}")):
+            fonts.append({
+                "name": f.stem,
+                "source": "user",
+                "url": f"/api/fonts/file/user/{f.name}",
+            })
+
+    return {"fonts": fonts}
+
+
+@app.post("/api/fonts/upload")
+async def upload_font(file: UploadFile = File(...)):
+    """Save a user-uploaded font under assets/fonts/user/."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename")
+    suffix = _Path(file.filename).suffix.lower()
+    if suffix not in _FONT_EXTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported font format {suffix}. Use .ttf, .otf, .woff, or .woff2.",
+        )
+
+    # Basic name sanitization
+    safe_name = _Path(file.filename).name.replace("/", "_").replace("\\", "_")
+    target = _USER_FONTS / safe_name
+
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:  # 10 MB cap
+        raise HTTPException(status_code=413, detail="Font file too large (max 10 MB)")
+    target.write_bytes(contents)
+
+    return {
+        "name": target.stem,
+        "source": "user",
+        "url": f"/api/fonts/file/user/{target.name}",
+        "size": len(contents),
+    }
+
+
+@app.get("/api/fonts/file/{name}")
+async def serve_bundled_font(name: str):
+    """Serve a bundled font (in assets/fonts/, not under user/)."""
+    safe = _Path(name).name  # strip any path traversal
+    target = _ASSETS_FONTS / safe
+    if not target.is_file() or target.parent != _ASSETS_FONTS:
+        raise HTTPException(status_code=404, detail="Font not found")
+    mime = _FONT_MIME.get(target.suffix.lower(), "application/octet-stream")
+    return FileResponse(str(target), media_type=mime)
+
+
+@app.get("/api/fonts/file/user/{name}")
+async def serve_user_font(name: str):
+    """Serve a user-uploaded font from assets/fonts/user/."""
+    safe = _Path(name).name
+    target = _USER_FONTS / safe
+    if not target.is_file() or target.parent != _USER_FONTS:
+        raise HTTPException(status_code=404, detail="Font not found")
+    mime = _FONT_MIME.get(target.suffix.lower(), "application/octet-stream")
+    return FileResponse(str(target), media_type=mime)

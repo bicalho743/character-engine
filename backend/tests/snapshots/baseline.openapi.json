@@ -214,6 +214,20 @@
         "title": "Body_thumbnail_upload_api_thumbnail_upload_post",
         "type": "object"
       },
+      "Body_upload_font_api_fonts_upload_post": {
+        "properties": {
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_font_api_fonts_upload_post",
+        "type": "object"
+      },
       "EditRequest": {
         "properties": {
           "api_key": {
@@ -711,6 +725,28 @@
             "default": "bottom",
             "title": "Position",
             "type": "string"
+          },
+          "text_case": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Case"
+          },
+          "words_per_line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Words Per Line"
           }
         },
         "required": [
@@ -1040,6 +1076,136 @@
           }
         },
         "summary": "Generate Effects Config"
+      }
+    },
+    "/api/fonts": {
+      "get": {
+        "description": "Return the catalog of available fonts (system + user-uploaded).",
+        "operationId": "list_fonts_api_fonts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Fonts"
+      }
+    },
+    "/api/fonts/file/user/{name}": {
+      "get": {
+        "description": "Serve a user-uploaded font from assets/fonts/user/.",
+        "operationId": "serve_user_font_api_fonts_file_user__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Serve User Font"
+      }
+    },
+    "/api/fonts/file/{name}": {
+      "get": {
+        "description": "Serve a bundled font (in assets/fonts/, not under user/).",
+        "operationId": "serve_bundled_font_api_fonts_file__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Serve Bundled Font"
+      }
+    },
+    "/api/fonts/upload": {
+      "post": {
+        "description": "Save a user-uploaded font under assets/fonts/user/.",
+        "operationId": "upload_font_api_fonts_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_font_api_fonts_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Font"
       }
     },
     "/api/hook": {

@@ -30,16 +30,16 @@ Each top-level folder is self-contained: `backend/` has its own `Dockerfile` and
 ```bash
 # Full stack (recommended)
 docker compose up --build
-#   Frontend → http://localhost:5175
-#   Backend  → http://localhost:8000
-#   Renderer → http://localhost:3100
+#   Frontend → http://localhost:3001
+#   Backend  → http://localhost:3002
+#   Renderer → http://localhost:3003
 
 # Backend only (local dev — needs Python 3.11+ and FFmpeg on PATH)
 cd backend
 pip install -r requirements.txt -r requirements-dev.txt
 pip install -e .
 pytest -m "not e2e"                    # unit + API contract suite (~0.6s)
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+uvicorn app.main:app --host 0.0.0.0 --port 3002
 
 # Frontend only
 cd frontend && npm install && npm run dev
@@ -201,7 +201,7 @@ Server-side env vars the code actually reads. **Auto-managed** — generated fro
 | `YOUTUBE_COOKIES` | _(unset)_ | Optional: YouTube ingestion (commented — optional) |
 | `RENDER_SERVICE_URL` | `http://renderer:3100` | Optional: Remotion render service |
 | `MAX_CONCURRENT_JOBS` | `5` | Tuning |
-| `VITE_API_URL` | `http://localhost:8000` | Tuning |
+| `VITE_API_URL` | `http://localhost:3002` | Tuning |
 | `VITE_ENCRYPTION_KEY` | _(unset)_ | Tuning (commented — optional) |
 | `ELEVENLABS_API_KEY` | _(unset)_ | Tuning (commented — optional) |
 | `UPLOAD_POST_API_KEY` | _(unset)_ | Tuning (commented — optional) |

@@ -3,10 +3,10 @@ services:
     build: ./backend
     container_name: openshorts-backend
     ports:
-      - "8000:8000"
+      - "3002:8000"
     volumes:
       - ./backend:/app
-      - ./assets:/app/assets:ro
+      - ./assets:/app/assets
       - /app/__pycache__
       - ./output:/app/output
       - ./uploads:/app/uploads
@@ -16,7 +16,7 @@ services:
     build: ./frontend
     container_name: openshorts-frontend
     ports:
-      - "5175:5173"
+      - "3001:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -30,7 +30,7 @@ services:
       dockerfile: renderer/service/Dockerfile
     container_name: openshorts-renderer
     ports:
-      - "3100:3100"
+      - "3003:3100"
     volumes:
       - ./output:/output
     environment:

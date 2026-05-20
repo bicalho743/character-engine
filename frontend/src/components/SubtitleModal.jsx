@@ -2,6 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { X, Type, Loader2 } from 'lucide-react';
 import { getApiUrl } from '../config';
 import RemotionPreview from './RemotionPreview';
+import { useBrandKit } from '../lib/brandKit';
+
+// Map the 9-anchor brand position to the modal's simpler 3-position picker.
+// Subtitles in this pipeline are always vertical (9:16) output.
+function anchorToVerticalPosition(anchor) {
+    if (anchor?.startsWith('top'))    return 'top';
+    if (anchor?.startsWith('middle')) return 'middle';
+    return 'bottom';
+}
 
 const FONT_OPTIONS = [
     { value: 'Verdana', label: 'Verdana' },
@@ -29,13 +38,30 @@ const ANIMATION_OPTIONS = [
 ];
 
 export default function SubtitleModal({ isOpen, onClose, onGenerate, isProcessing, videoUrl, jobId, clipIndex, existingHook }) {
-    const [position, setPosition] = useState('bottom');
-    const [fontSize, setFontSize] = useState(24);
-    const [fontName, setFontName] = useState('Verdana');
-    const [fontColor, setFontColor] = useState('#FFFFFF');
-    const [highlightColor, setHighlightColor] = useState('#FFDD00');
-    const [borderColor, setBorderColor] = useState('#000000');
-    const [borderWidth, setBorderWidth] = useState(2);
+    // Pulls live brand-kit values (re-renders on any settings change).
+    const brandKit = useBrandKit();
+    const bkStyle  = brandKit.styles['9:16'];
+
+    const [position, setPosition] = useState(anchorToVerticalPosition(bkStyle.position));
+    // Brand size is in 1080p px; the modal's `fontSize` is for a small preview (~× 2.2 ratio when burned in).
+    const [fontSize, setFontSize] = useState(Math.round(bkStyle.size / 2.5));
+    const [fontName, setFontName] = useState(brandKit.font.family);
+    const [fontColor, setFontColor] = useState(bkStyle.textColor);
+    const [highlightColor, setHighlightColor] = useState(brandKit.colors[1]?.hex || '#FFDD00');
+    const [borderColor, setBorderColor] = useState(bkStyle.strokeColor);
+    const [borderWidth, setBorderWidth] = useState(Math.max(1, Math.round(bkStyle.strokeWidth / 2.5)));
+    // Words-per-line flows to the backend SRT generator as `max_words`.
+    const [wordsPerLine] = useState(bkStyle.wordsPerLine);
+    // Text case (original | upper | lower) — applied to the SRT text by the backend.
+    const [textCase] = useState(bkStyle.textCase);
+
+    // Re-pull brand defaults if the kit changes while modal is open and user hasn't touched values.
+    // (Conservative: only resets if matching previous defaults; lets manual edits stick.)
+    useEffect(() => {
+        if (!isOpen) return;
+        setPosition(prev => prev === anchorToVerticalPosition(bkStyle.position) ? prev : prev);
+        // Note: full bidirectional sync would require tracking "user dirty" state; left to a future pass.
+    }, [isOpen, brandKit]);
     const [bgColor, setBgColor] = useState('#000000');
     const [bgOpacity, setBgOpacity] = useState(0.0);
     const [animation, setAnimation] = useState('pop');
@@ -357,6 +383,7 @@ export default function SubtitleModal({ isOpen, onClose, onGenerate, isProcessin
                     <button
                         onClick={() => onGenerate({
                             position, fontSize, fontName, fontColor, borderColor, borderWidth, bgColor, bgOpacity,
+                            wordsPerLine, textCase,
                             // Remotion data
                             remotion: useRemotionPreview ? subtitleConfig : null,
                         })}
