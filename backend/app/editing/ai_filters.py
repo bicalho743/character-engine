@@ -6,8 +6,9 @@ VideoEditor for backwards compatibility.
 """
 import os
 import json
-import subprocess
 import time
+
+from app.video import ffmpeg as ffmpeg_wrapper
 
 from google import genai
 from google.genai import types
@@ -163,16 +164,14 @@ class VideoEditor:
 
         if not filter_data or "filter_string" not in filter_data:
             print("⚠️ No filter string found. Copying original.")
-            subprocess.run(['ffmpeg', '-y', '-i', input_path, '-c', 'copy', output_path])
+            ffmpeg_wrapper.run(['-y', '-i', input_path, '-c', 'copy', output_path])
             return
 
         filter_string = filter_data["filter_string"]
 
         # Get input dimensions so we can enforce geometry (avoid broken aspect ratios).
         try:
-            probe_cmd = ['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=s=x:p=0', input_path]
-            res_out = subprocess.check_output(probe_cmd, env={**os.environ, "LANG": "C.UTF-8"}).decode().strip()
-            w, h = map(int, res_out.split('x'))
+            w, h = ffmpeg_wrapper.probe_resolution(input_path)
         except Exception as e:
             print(f"⚠️ Could not probe resolution: {e}")
             w, h = None, None
@@ -198,38 +197,14 @@ class VideoEditor:
 
         print(f"🎬 Executing AI Filter: {filter_string}")
 
-        cmd = [
-            'ffmpeg', '-y',
+        # Wrapper sets LANG/LC_ALL=C.UTF-8 so the prior bytes-encoding hack
+        # is no longer needed; subprocess on Python 3 with a UTF-8 locale
+        # handles unicode args correctly.
+        ffmpeg_wrapper.run([
+            '-y',
             '-i', input_path,
             '-vf', filter_string,
             '-c:v', 'libx264', '-preset', 'fast', '-crf', '22',
             '-c:a', 'copy',
-            output_path
-        ]
-
-        # Use explicit environment with UTF-8 to avoid ascii errors in subprocess
-        env = os.environ.copy()
-        # On some minimal docker images, we need to ensure we use a UTF-8 locale
-        # Try C.UTF-8 first, fallback to en_US.UTF-8 if available, but C.UTF-8 is usually safer for minimal
-        env["LANG"] = "C.UTF-8"
-        env["LC_ALL"] = "C.UTF-8"
-
-        try:
-            # We must encode arguments if filesystem is ascii but we have unicode chars
-            # But subprocess in Python 3 handles unicode args by encoding them with os.fsencode().
-            # If sys.getfilesystemencoding() is ascii, this fails.
-            # We can't change fs encoding at runtime easily.
-            # Workaround: pass bytes directly? subprocess allows bytes in args.
-
-            # Convert command elements to bytes assuming utf-8 if they are strings
-            cmd_bytes = []
-            for arg in cmd:
-                if isinstance(arg, str):
-                    cmd_bytes.append(arg.encode('utf-8'))
-                else:
-                    cmd_bytes.append(arg)
-
-            subprocess.run(cmd_bytes, check=True, env=env)
-        except subprocess.CalledProcessError as e:
-            print(f"❌ FFmpeg failed: {e}")
-            raise e
+            output_path,
+        ])

@@ -1,10 +1,11 @@
 """Hook text overlays: PIL-rendered cards (PNG) burned onto video via FFmpeg."""
 import os
 import textwrap
-import subprocess
 import urllib.request
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
+
+from app.video import ffmpeg as ffmpeg_wrapper
 
 FONT_URL = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSerif/NotoSerif-Bold.ttf"
 
@@ -198,12 +199,7 @@ def add_hook_to_video(video_path, text, output_path, position="top", font_scale=
 
     # 1. Probe video width to scale text properly
     try:
-        cmd = ['ffprobe', '-v', 'error', '-show_entries', 'stream=width,height', '-of', 'csv=s=x:p=0', video_path]
-        res = subprocess.check_output(cmd).decode().strip()
-        # Takes first stream if multiple
-        dims = res.split('\n')[0].split('x')
-        video_width = int(dims[0])
-        video_height = int(dims[1])
+        video_width, video_height = ffmpeg_wrapper.probe_resolution(video_path)
     except Exception as e:
         print(f"⚠️ FFprobe failed: {e}. Assuming 1080x1920")
         video_width = 1080
@@ -233,24 +229,22 @@ def add_hook_to_video(video_path, text, output_path, position="top", font_scale=
         
         # 4. FFmpeg Command
         print(f"🎬 Overlaying hook: '{text}' at {overlay_x},{overlay_y}")
-        
-        ffmpeg_cmd = [
-            'ffmpeg', '-y',
+
+        ffmpeg_wrapper.run([
+            '-y',
             '-i', video_path,
             '-i', img_path,
             '-filter_complex', f"[0:v][1:v]overlay={overlay_x}:{overlay_y}",
             '-c:a', 'copy',
             '-c:v', 'libx264', '-preset', 'fast', '-crf', '22',
-            output_path
-        ]
-        
-        subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output_path,
+        ])
         print(f"✅ Hook added to {output_path}")
         return True
-        
-    except subprocess.CalledProcessError as e:
-        print(f"❌ FFmpeg Error: {e.stderr.decode() if e.stderr else 'Unknown'}")
-        raise e
+
+    except ffmpeg_wrapper.FFmpegError as e:
+        print(f"❌ FFmpeg Error: {e}")
+        raise
     except Exception as e:
         print(f"❌ Hook Gen Error: {e}")
         raise e

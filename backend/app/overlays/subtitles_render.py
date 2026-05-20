@@ -1,6 +1,6 @@
 """Subtitle burn-in: FFmpeg subtitles filter + ASS color/style conversion."""
 
-import subprocess
+from app.video import ffmpeg as ffmpeg_wrapper
 
 
 def hex_to_ass_color(hex_color, opacity=1.0):
@@ -74,20 +74,15 @@ def burn_subtitles(video_path, srt_path, output_path, alignment=2, fontsize=16,
         f"Bold=1"
     )
 
-    cmd = [
-        'ffmpeg', '-y',
+    args = [
+        '-y',
         '-i', video_path,
         '-vf', f"subtitles='{safe_srt_path}':force_style='{style_string}'",
         '-c:a', 'copy',
         '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
-        output_path
+        output_path,
     ]
 
-    print(f"🎬 Burning subtitles: {' '.join(cmd)}")
-    result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-
-    if result.returncode != 0:
-        print(f"❌ FFmpeg Subtitle Error: {result.stderr.decode()}")
-        raise Exception(f"FFmpeg failed: {result.stderr.decode()}")
-
+    print(f"🎬 Burning subtitles: ffmpeg {' '.join(args)}")
+    ffmpeg_wrapper.run(args)
     return True
