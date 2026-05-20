@@ -1,11 +1,14 @@
 """Tests for the Phase 4 merge helper.
 
 Covers the public surface of ``app.video.merge.concat_clips``: input
-validation, filter-graph composition, output path derivation, and the
-FFmpeg invocation contract (only via the wrapper).
+validation, filter-graph composition, output path derivation, the FFmpeg
+invocation contract (only via the wrapper), and the atomic-rename safety
+net that prevents concurrent-identical-merge clobbering.
 """
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -99,8 +102,10 @@ def test_concat_clips_invokes_ffmpeg_with_expected_filter(tmp_path):
     out = tmp_path / "merged.mp4"
 
     def fake_run(args, **_kwargs):
-        # Mimic a successful ffmpeg run by creating the output file.
-        out.write_bytes(b"merged")
+        # ffmpeg's positional out path is the last argv element; atomic-rename
+        # passes a `.partial-*.mp4` path, not the public `out`.
+        actual_out = args[-1]
+        Path(actual_out).write_bytes(b"merged")
         return None
 
     with patch("app.video.merge.ffmpeg_wrapper.run", side_effect=fake_run) as run_mock:
@@ -124,3 +129,96 @@ def test_concat_clips_raises_when_ffmpeg_produces_empty_output(tmp_path):
         with pytest.raises(RuntimeError) as exc:
             concat_clips([str(a), str(b)], str(out))
         assert "empty output" in str(exc.value)
+
+
+# ---------------------------------------------------------------------------
+# Atomic-rename safety net (Phase 5 fix for concurrent-identical-merge race).
+# ---------------------------------------------------------------------------
+
+def test_concat_clips_writes_to_partial_then_renames(tmp_path):
+    """ffmpeg writes to a `.partial-*.mp4` path; final `out` appears via rename.
+
+    Prevents partial-read races when two clients POST the same indices: each
+    merge writes to a unique partial path, then atomic-renames to the stable
+    public URL. The reader either sees the old file or the new file, never
+    a mid-write file.
+    """
+    a = tmp_path / "a.mp4"
+    b = tmp_path / "b.mp4"
+    a.write_bytes(b"x")
+    b.write_bytes(b"x")
+    out = tmp_path / "merged.mp4"
+    seen_partial_paths: list[str] = []
+
+    def fake_run(args, **_kwargs):
+        actual_out = args[-1]
+        seen_partial_paths.append(actual_out)
+        # Final public path must not exist during ffmpeg run.
+        assert not out.exists(), "final path was written to before rename"
+        assert ".partial-" in actual_out, f"expected partial path, got {actual_out}"
+        Path(actual_out).write_bytes(b"merged")
+        return None
+
+    with patch("app.video.merge.ffmpeg_wrapper.run", side_effect=fake_run):
+        result = concat_clips([str(a), str(b)], str(out))
+
+    assert result == str(out)
+    # After concat_clips returns, public path exists, partial does not.
+    assert out.exists()
+    assert out.read_bytes() == b"merged"
+    for partial in seen_partial_paths:
+        assert not os.path.exists(partial), f"partial {partial} not cleaned up"
+
+
+def test_concat_clips_cleans_up_partial_on_ffmpeg_failure(tmp_path):
+    """If ffmpeg raises, the partial file is removed and `out` is not touched."""
+    from app.video.ffmpeg import FFmpegError
+    a = tmp_path / "a.mp4"
+    b = tmp_path / "b.mp4"
+    a.write_bytes(b"x")
+    b.write_bytes(b"x")
+    out = tmp_path / "merged.mp4"
+    out.write_bytes(b"existing-stable-output")  # pretend a prior merge succeeded
+    seen_partial_paths: list[str] = []
+
+    def fake_run(args, **_kwargs):
+        actual_out = args[-1]
+        seen_partial_paths.append(actual_out)
+        Path(actual_out).write_bytes(b"corrupt-mid-write")
+        raise FFmpegError(1, b"simulated ffmpeg crash", args)
+
+    with patch("app.video.merge.ffmpeg_wrapper.run", side_effect=fake_run):
+        with pytest.raises(FFmpegError):
+            concat_clips([str(a), str(b)], str(out))
+
+    # Stable output preserved; corrupt partial cleaned up.
+    assert out.read_bytes() == b"existing-stable-output"
+    for partial in seen_partial_paths:
+        assert not os.path.exists(partial), f"partial {partial} not cleaned up"
+
+
+def test_concat_clips_partial_paths_are_unique_across_calls(tmp_path):
+    """Two back-to-back merges with the same final path use different partials.
+
+    Simulates the concurrent-merge case: with unique nonces, neither writer
+    clobbers the other mid-flight.
+    """
+    a = tmp_path / "a.mp4"
+    b = tmp_path / "b.mp4"
+    a.write_bytes(b"x")
+    b.write_bytes(b"x")
+    out = tmp_path / "merged.mp4"
+    seen_partials: list[str] = []
+
+    def fake_run(args, **_kwargs):
+        actual_out = args[-1]
+        seen_partials.append(actual_out)
+        Path(actual_out).write_bytes(b"merged")
+        return None
+
+    with patch("app.video.merge.ffmpeg_wrapper.run", side_effect=fake_run):
+        concat_clips([str(a), str(b)], str(out))
+        concat_clips([str(a), str(b)], str(out))
+
+    assert len(seen_partials) == 2
+    assert seen_partials[0] != seen_partials[1], "partial paths must be unique"

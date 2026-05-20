@@ -65,6 +65,70 @@ def test_merge_rejects_out_of_bounds_clip_index(app_client):
     assert r.status_code in (400, 422)
 
 
+def test_merge_rejects_negative_clip_index(app_client):
+    """Negative indices must be rejected at the route boundary.
+
+    Defense-in-depth alongside Pydantic: even though clip_count = 3, a
+    `clip_index=-1` would index `clips[-1]` (the last clip) silently.
+    The route's `idx < 0` check rejects it with 400. Covers Codex
+    test_merge_endpoint:59 gap.
+    """
+    client, job_id, _ = app_client
+    r = client.post("/api/merge", json={
+        "job_id": job_id,
+        "clip_indices": [-1, 0],
+    })
+    assert r.status_code in (400, 422)
+
+
+def test_merge_normalizes_transition_case(app_client):
+    """field_validator strips + lowercases transition; ' CUT ' is accepted."""
+    client, job_id, _ = app_client
+
+    def fake_concat(inputs, output):
+        Path(output).write_bytes(b"merged")
+        return output
+
+    with patch("app.main.concat_clips", side_effect=fake_concat):
+        r = client.post("/api/merge", json={
+            "job_id": job_id,
+            "clip_indices": [0, 1],
+            "transition": " CUT ",
+        })
+    assert r.status_code == 200, r.text
+
+
+def test_merge_atomic_rename_uses_unique_partial_paths(app_client):
+    """Concurrent identical merges write to unique partial paths.
+
+    Codex flagged test_merge_endpoint:111 (no concurrent-clobber coverage).
+    We verify the contract: concat_clips receives a final-path output and
+    handles partial-rename internally; the route hands it the public path
+    and trusts the helper to atomically swap. This guards the route-helper
+    contract, not the helper internals (those are in test_merge.py).
+    """
+    client, job_id, _ = app_client
+    seen_outputs: list[str] = []
+
+    def fake_concat(inputs, output):
+        seen_outputs.append(output)
+        Path(output).write_bytes(b"merged")
+        return output
+
+    with patch("app.main.concat_clips", side_effect=fake_concat):
+        r1 = client.post("/api/merge", json={
+            "job_id": job_id, "clip_indices": [0, 1],
+        })
+        r2 = client.post("/api/merge", json={
+            "job_id": job_id, "clip_indices": [0, 1],
+        })
+    assert r1.status_code == 200 and r2.status_code == 200
+    # Both calls converge on the same idempotency-key filename — the helper
+    # is responsible for unique partials underneath.
+    assert seen_outputs[0] == seen_outputs[1]
+    assert seen_outputs[0].endswith("merged_0_1.mp4")
+
+
 def test_merge_rejects_single_clip(app_client):
     client, job_id, _ = app_client
     r = client.post("/api/merge", json={

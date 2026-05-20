@@ -8,7 +8,9 @@ a graded clip and a subtitled clip). All FFmpeg invocations funnel through
 
 from __future__ import annotations
 
+import contextlib
 import os
+import secrets
 from typing import List, Sequence
 
 from app.video import ffmpeg as ffmpeg_wrapper
@@ -61,6 +63,12 @@ def build_concat_args(input_paths: Sequence[str], output_path: str) -> List[str]
 def concat_clips(input_paths: Sequence[str], output_path: str) -> str:
     """Concat ``input_paths`` into a single MP4 at ``output_path``.
 
+    Writes to a unique ``{output_path}.partial-{nonce}.mp4`` file first, then
+    ``os.replace()``s it onto ``output_path``. Two concurrent merges with the
+    same indices (the public URL is filename-as-idempotency-key) get distinct
+    partial paths, so neither clobbers the other mid-write; readers see the
+    pre-merge file or the post-merge file, never a partial.
+
     Raises ``ValueError`` if fewer than 2 inputs are provided,
     ``FileNotFoundError`` if any input is missing, ``FFmpegError`` if the
     ffmpeg invocation fails, and ``RuntimeError`` if the resulting file is
@@ -74,9 +82,15 @@ def concat_clips(input_paths: Sequence[str], output_path: str) -> str:
         if not os.path.exists(path):
             raise FileNotFoundError(f"Merge input not found: {path}")
 
-    args = build_concat_args(list(input_paths), output_path)
-    ffmpeg_wrapper.run(args)
-
-    if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
-        raise RuntimeError(f"Merge produced empty output: {output_path}")
+    partial_path = f"{output_path}.partial-{secrets.token_hex(6)}.mp4"
+    args = build_concat_args(list(input_paths), partial_path)
+    try:
+        ffmpeg_wrapper.run(args)
+        if not os.path.exists(partial_path) or os.path.getsize(partial_path) == 0:
+            raise RuntimeError(f"Merge produced empty output: {output_path}")
+        os.replace(partial_path, output_path)
+    except Exception:
+        with contextlib.suppress(OSError):
+            os.remove(partial_path)
+        raise
     return output_path
