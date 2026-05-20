@@ -867,7 +867,16 @@ async def edit_clip(
             "edit_plan": plan
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
+        # UnsafeFilterError (from app.utils.filters) signals an LLM-produced
+        # filter that uses a disallowed FFmpeg filter — return 400, not 500,
+        # so the frontend can show "retry: AI returned an unsafe filter".
+        from app.utils.filters import UnsafeFilterError
+        if isinstance(e, UnsafeFilterError):
+            print(f"❌ Unsafe AI filter rejected: {e}")
+            raise HTTPException(status_code=400, detail=f"AI returned an unsafe filter: {e}")
         print(f"❌ Edit Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -21,6 +21,8 @@ from app.utils.filters import (
     split_filter_chain as _split_filter_chain_fn,
     enforce_zoompan_output_size as _enforce_zoompan_output_size_fn,
     sanitize_filter_string as _sanitize_filter_string_fn,
+    validate_filter_string as _validate_filter_string_fn,
+    UnsafeFilterError,
 )
 
 
@@ -169,20 +171,27 @@ class VideoEditor:
 
         filter_string = filter_data["filter_string"]
 
-        # Get input dimensions so we can enforce geometry (avoid broken aspect ratios).
-        try:
-            w, h = ffmpeg_wrapper.probe_resolution(input_path)
-        except Exception as e:
-            print(f"⚠️ Could not probe resolution: {e}")
-            w, h = None, None
-
-        # Sanitize common expression pitfalls (e.g., t<3 / on>=75) before executing FFmpeg.
+        # Sanitize common expression pitfalls (e.g., t<3 / on>=75) before
+        # validating: post-sanitization is the form that actually executes,
+        # so that's what must pass the allowlist.
         sanitized = _sanitize_filter_string_fn(filter_string)
         if sanitized != filter_string:
             print("🧼 Sanitized AI Filter (converted comparisons to lt/lte/gt/gte functions)")
             print(f"🧼 Before: {filter_string}")
             print(f"🧼 After:  {sanitized}")
             filter_string = sanitized
+
+        # SAFETY: reject any LLM-produced filter that calls a non-allowlisted
+        # FFmpeg filter (movie/amovie/subtitles/concat/ass/...). Raises
+        # UnsafeFilterError, which the /api/edit route should surface as 400.
+        _validate_filter_string_fn(filter_string)
+
+        # Get input dimensions so we can enforce geometry (avoid broken aspect ratios).
+        try:
+            w, h = ffmpeg_wrapper.probe_resolution(input_path)
+        except Exception as e:
+            print(f"⚠️ Could not probe resolution: {e}")
+            w, h = None, None
 
         # Enforce zoompan output size to preserve aspect ratio / resolution.
         if w and h:
