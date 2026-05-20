@@ -1,5 +1,5 @@
 // Step 1: Upload. Drag-drop + browse, up to 5 files, MP4/MOV <= 2 GB.
-// Each entry: { id, file (File), name, size }
+// Each entry: { id, file (File), name, size, durationSec? }
 
 import { useRef, useState } from 'react';
 import { FileVideo, UploadCloud, X } from 'lucide-react';
@@ -14,6 +14,31 @@ function fmtSize(bytes) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+function fmtDuration(secs) {
+  if (secs < 60) return `${Math.round(secs)}s`;
+  const m = Math.floor(secs / 60), s = Math.round(secs % 60);
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+
+// Probe video duration via a hidden HTMLVideoElement. Used by Step 3
+// (Processing) to estimate ETA. Returns null if the metadata can't be
+// read (rare — non-MP4 fakes, corrupt files).
+function probeDurationSec(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    const cleanup = () => { URL.revokeObjectURL(url); };
+    video.onloadedmetadata = () => {
+      const d = Number.isFinite(video.duration) ? video.duration : null;
+      cleanup();
+      resolve(d);
+    };
+    video.onerror = () => { cleanup(); resolve(null); };
+    video.src = url;
+  });
 }
 
 export default function Upload({ wizard }) {
@@ -35,9 +60,20 @@ export default function Upload({ wizard }) {
       const okType = ALLOWED_TYPES.includes(f.type) || /\.(mp4|mov)$/i.test(f.name);
       if (!okType) { setError(`${f.name}: only MP4 / MOV files.`); continue; }
       if (f.size > MAX_SIZE_BYTES) { setError(`${f.name}: over 2 GB.`); continue; }
-      accepted.push({ id: nextId(), file: f, name: f.name, size: f.size });
+      accepted.push({ id: nextId(), file: f, name: f.name, size: f.size, durationSec: null });
     }
-    if (accepted.length) wizard.setData({ files: [...files, ...accepted] });
+    if (accepted.length) {
+      wizard.setData({ files: [...files, ...accepted] });
+      // Probe durations asynchronously — Processing uses them to estimate ETA.
+      accepted.forEach(async (entry) => {
+        const d = await probeDurationSec(entry.file);
+        if (d == null) return;
+        wizard.setData((prev) => ({
+          ...prev,
+          files: (prev.files || []).map((p) => p.id === entry.id ? { ...p, durationSec: d } : p),
+        }));
+      });
+    }
   }
 
   function removeFile(id) {
@@ -96,7 +132,10 @@ export default function Upload({ wizard }) {
                 <FileVideo size={18} className="text-zinc-500 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] text-white truncate">{f.name}</div>
-                  <div className="text-[11px] text-zinc-500">{fmtSize(f.size)}</div>
+                  <div className="text-[11px] text-zinc-500">
+                    {fmtSize(f.size)}
+                    {f.durationSec != null && ` · ${fmtDuration(f.durationSec)}`}
+                  </div>
                 </div>
                 <button
                   onClick={() => removeFile(f.id)}
