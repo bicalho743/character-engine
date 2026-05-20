@@ -1,5 +1,6 @@
 import { StrictMode, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
+import { HashRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import Landing from './Landing.jsx'
@@ -9,7 +10,14 @@ function Root() {
   const resolveView = () => {
     const hash = window.location.hash;
     if (hash === '#legal') return 'legal';
-    if (hash === '#app' || localStorage.getItem('openshorts_skip_landing') === '1') return 'app';
+    // `#app` (Landing's launch hash) or `#/...` (HashRouter paths) both mean
+    // we're inside the app. skip-landing keeps users out of Landing once
+    // they've launched at least once.
+    if (
+      hash === '#app'
+      || hash.startsWith('#/')
+      || localStorage.getItem('openshorts_skip_landing') === '1'
+    ) return 'app';
     return 'landing';
   };
 
@@ -28,7 +36,11 @@ function Root() {
   };
 
   if (view === 'legal') return <Legal />;
-  if (view === 'app') return <App />;
+  if (view === 'app') return (
+    <HashRouter>
+      <App />
+    </HashRouter>
+  );
   return <Landing onLaunchApp={handleLaunchApp} />;
 }
 
