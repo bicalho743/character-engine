@@ -173,10 +173,13 @@ def apply_subtitles(
         max_words = None
     text_case = style.get('text_case') or 'original'
 
-    # Mirror /api/subtitle: dubbed clips need fresh transcription because
-    # the original transcript no longer matches the audio track.
-    is_dubbed = input_filename.startswith("translated_")
-    if is_dubbed:
+    # Dubbed clips and silence-cut clips both invalidate the original
+    # transcript timings, so we re-transcribe from the actual audio track.
+    needs_retranscribe = (
+        input_filename.startswith("translated_")
+        or input_filename.startswith("silencecut_")
+    )
+    if needs_retranscribe:
         success = generate_srt_from_video(input_path, srt_path, max_words=max_words, text_case=text_case)
     else:
         success = generate_srt(transcript, clip_start, clip_end, srt_path, max_words=max_words, text_case=text_case)

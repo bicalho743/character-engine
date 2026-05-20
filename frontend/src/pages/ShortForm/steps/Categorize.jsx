@@ -39,8 +39,8 @@ const CATEGORIES = [
 // Order matches the run_job auto-pipeline chain: AI edit → grade → silence → subtitles.
 const TOGGLES = [
   { id: 'autoEdit',       label: 'AI edits (zoom / pan / cuts)', hint: 'Gemini picks zoompan + cut points per clip.' },
-  { id: 'colorGrade',     label: 'Color grade',                   hint: 'Apply a cinematic LUT (lands with /api/colorgrade in Phase 2).' },
-  { id: 'silenceRemoval', label: 'Silence removal',               hint: 'Auto-cut dead air (lands with /api/silencecut in Phase 2).' },
+  { id: 'colorGrade',     label: 'Color grade',                   hint: 'Apply a cinematic LUT (teal-orange by default).' },
+  { id: 'silenceRemoval', label: 'Silence removal',               hint: 'Auto-cut dead air from your clip.' },
   { id: 'autoSubtitles',  label: 'Auto subtitles',                hint: 'Transcribe + burn captions with brand-kit style.' },
 ];
 

@@ -189,14 +189,14 @@ os.makedirs(THUMBNAILS_DIR, exist_ok=True)
 app.mount("/thumbnails", StaticFiles(directory=THUMBNAILS_DIR), name="thumbnails")
 
 # ---------------------------------------------------------------------------
-# Short-form auto-pipeline config (Phase 1 — see ~/.claude/plans/...-cray.md)
+# Short-form auto-pipeline config (Phase 1+2 — see ~/.claude/plans/...-cray.md)
 #
 # When POST /api/process arrives with auto_subtitles / auto_edit / color_grade
 # / silence_removal toggles, run_job dispatches the post-processing chain
 # AFTER the CLI subprocess produces the raw reframed clips. Each enabled step
 # writes a sibling file (originals are preserved) and the polished URL is
-# what the wizard surfaces in Review. The full chain (Phase 2 wires the last
-# two) is: AI edit → color grade → silence removal → subtitles.
+# what the wizard surfaces in Review. The chain is:
+#   AI edit → color grade → silence removal → subtitles.
 # ---------------------------------------------------------------------------
 
 _AUTO_ALLOWED_CATEGORIES = {"educational", "yap", "live", "viral"}
@@ -421,9 +421,9 @@ async def _run_auto_pipeline(
 ) -> None:
     """Apply the per-clip post-processing chain configured in /api/process.
 
-    Order: AI edit → color grade (Phase 2) → silence removal (Phase 2) → subtitles.
-    Each step writes a sibling file; the original ``_clip_N.mp4`` is preserved
-    so Review's per-clip toggles (Phase 3) can swap URLs without re-rendering.
+    Order: AI edit → color grade → silence removal → subtitles. Each step
+    writes a sibling file; the original ``_clip_N.mp4`` is preserved so
+    Review's per-clip toggles (Phase 3) can swap URLs without re-rendering.
 
     Per-clip failures append to ``jobs[job_id]['logs']`` and do NOT mark the
     job as failed — a polished clip missing one effect is better than nothing.
@@ -461,8 +461,8 @@ async def _run_auto_pipeline(
         variants: Dict[str, Optional[str]] = {
             'original':   original_filename,
             'edited':     None,
-            'graded':     None,   # Phase 2
-            'silencecut': None,   # Phase 2
+            'graded':     None,
+            'silencecut': None,
             'subtitled':  None,
         }
 
@@ -1127,8 +1127,10 @@ async def add_subtitles(req: SubtitleRequest):
     
     try:
         # 1. Generate SRT
-        # Check if this is a dubbed video - if so, transcribe it fresh
-        is_dubbed = filename.startswith("translated_")
+        # Re-transcribe whenever the audio track no longer matches the cached
+        # transcript: dubbed clips (translated_) and silence-cut clips both
+        # invalidate the original word-level timings.
+        is_dubbed = filename.startswith("translated_") or filename.startswith("silencecut_")
 
         # Brand-kit words-per-line: if provided, cap line length to N words.
         max_words = req.words_per_line if (req.words_per_line and req.words_per_line > 0) else None
