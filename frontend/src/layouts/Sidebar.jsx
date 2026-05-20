@@ -1,12 +1,13 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Smartphone, Video, Scissors, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, Smartphone, Video, Scissors, Settings as SettingsIcon, Wand2 } from 'lucide-react';
 
 const NAV = [
-  { to: '/dashboard',      label: 'Dashboard',     icon: LayoutDashboard },
-  { to: '/short-form',     label: 'Short-form',    icon: Smartphone },
-  { to: '/long-form',      label: 'Long-form',     icon: Video },
+  { to: '/dashboard',      label: 'Dashboard',      icon: LayoutDashboard },
+  { to: '/long-form',      label: 'Long-form',      icon: Video },
+  { to: '/ai-restyle',     label: 'AI Restyle',     icon: Wand2 },
+  { to: '/short-form',     label: 'Short-form',     icon: Smartphone },
   { to: '/clip-generator', label: 'Clip Generator', icon: Scissors },
-  { to: '/settings',       label: 'Settings',      icon: SettingsIcon },
+  { to: '/settings',       label: 'Settings',       icon: SettingsIcon },
 ];
 
 export default function Sidebar() {
