@@ -23,7 +23,13 @@ router = APIRouter()
 
 
 MAX_PROMPT_LEN = 500
-MAX_FILE_SIZE_MB = 2048  # match main.py
+# AI Restyle caps at 30s of video; 250MB is generous (8.3MB/s for 30s,
+# ~67 Mbps which is well above streaming-quality bitrates). Tighter than
+# main.py's 2GB cap on /api/process because a 30s clip never approaches
+# multi-GB unless it's pathological. (Codex HIGH-3 — upload-before-reject
+# disk-DoS hardening.) Overrideable for testing / specialty deployments
+# via the AI_RESTYLE_MAX_FILE_SIZE_MB env var.
+MAX_FILE_SIZE_MB = int(os.environ.get("AI_RESTYLE_MAX_FILE_SIZE_MB", "250"))
 _CHUNK = 1024 * 1024
 
 
@@ -68,13 +74,28 @@ async def start_restyle(
             detail=f"lighting_prompt exceeds {MAX_PROMPT_LEN} chars",
         )
 
+    limit_bytes = MAX_FILE_SIZE_MB * 1024 * 1024
+
+    # Content-Length preflight: reject before allocating any disk space.
+    # (Codex HIGH-3 — disk-DoS via upload-before-duration-check.) Clients
+    # can lie, but the streaming check below is the backstop.
+    declared = request.headers.get("content-length")
+    if declared:
+        try:
+            if int(declared) > limit_bytes:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"File too large. Max size {MAX_FILE_SIZE_MB}MB",
+                )
+        except ValueError:
+            pass  # malformed header — let the streaming check do its job
+
     job_id = str(uuid.uuid4())
     job_output_dir = os.path.join(OUTPUT_DIR, job_id)
     os.makedirs(job_output_dir, exist_ok=True)
 
     safe_name = os.path.basename(file.filename or f"{job_id}.mp4")
     input_path = os.path.join(UPLOAD_DIR, f"{job_id}_{safe_name}")
-    limit_bytes = MAX_FILE_SIZE_MB * 1024 * 1024
 
     # Read first chunk, validate signature before persisting anything.
     first_chunk = await file.read(_CHUNK)

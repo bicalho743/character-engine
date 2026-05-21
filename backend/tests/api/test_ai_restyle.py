@@ -109,6 +109,22 @@ def test_post_restyle_happy_path_enqueues_job(restyle_client, monkeypatch):
     assert jobs[job_id]["progress_pct"] == 0
 
 
+def test_post_restyle_rejects_oversize_content_length(restyle_client, monkeypatch):
+    """Codex HIGH-3: bodies declared larger than the AI Restyle cap must
+    be rejected via Content-Length preflight BEFORE the file is written
+    to disk (otherwise a 2GB upload could disk-DoS the host even if the
+    30s duration check would later reject it)."""
+    monkeypatch.setattr("app.routes.ai_restyle.MAX_FILE_SIZE_MB", 1)
+    big_body = b"\x00\x00\x00\x18ftypisom" + b"\x00" * (2 * 1024 * 1024)
+    res = restyle_client.post(
+        "/api/restyle",
+        files={"file": ("clip.mp4", io.BytesIO(big_body), "video/mp4")},
+        data={"background_prompt": "a", "lighting_prompt": "b"},
+        headers={"X-Gemini-Key": "g", "X-Fal-Key": "f"},
+    )
+    assert res.status_code == 413
+
+
 def test_get_restyle_status_not_found(restyle_client):
     res = restyle_client.get("/api/restyle/nonexistent")
     assert res.status_code == 404
