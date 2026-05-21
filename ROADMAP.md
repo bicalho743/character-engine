@@ -15,30 +15,42 @@ Tiering:
 - **Stubbed in v1** — UI is in place; the backend feature is a no-op, placeholder, or partial loop. Each item lists the backend TODO that unblocks it.
 - **Later** — not started.
 
-### AI Restyle (planned — new sidebar product)
+### AI Restyle
 
-A new sibling to Short-form / Long-form. Upload a video you've already produced; AI Restyle relights the first frame via Nano Banana (Gemini 2.5 Flash image preview) and uses that frame as the style reference for a video-to-video model — preserving the original motion, content, and audio while restyling lighting + background.
+A sibling to Short-form / Long-form. Upload a video you've already produced; AI Restyle relights the first frame via Nano Banana (Gemini 3.1 Flash image preview) and uses that frame as the style reference for a video-to-video model — preserving the original motion, content, and audio while restyling lighting + background.
 
 **Spec:** [`docs/superpowers/specs/2026-05-20-ai-restyle-design.md`](docs/superpowers/specs/2026-05-20-ai-restyle-design.md)
 **Plan:** [`docs/superpowers/plans/2026-05-20-ai-restyle.md`](docs/superpowers/plans/2026-05-20-ai-restyle.md)
+**Branch / PR:** `feat/ai-restyle` → [mutonby/openshorts#35](https://github.com/mutonby/openshorts/pull/35)
 
-**Planned (v1 scope, ~6-7 days):**
+**Shipped (on `feat/ai-restyle`, in review on PR #35)**
 - Sidebar entry between Long-form and Short-form (icon: `Wand2`)
-- 3-step wizard (Upload → Configure → Review)
-- Two preset dimensions (Background + Lighting) with 5 hand-tuned seed presets each
-- Per-job prompt override via editable textarea
-- Settings tab "AI Restyle" with full preset CRUD (star/edit/delete)
-- 30s duration cap (single video-to-video call; predictable ~$1-2 cost per clip)
-- Original audio preserved bit-for-bit
-- "Send to Short-form" CTA closes the loop with the editing pipeline
+- 3-step wizard (Upload → Configure → Review) with client-side duration probe (≤30s) and PhoneFrame Before/After preview in Review
+- Two preset dimensions (Background + Lighting), 5 hand-tuned seed presets each, served from `frontend/src/state/aiRestylePresets.js` (localStorage + custom-event broadcast, mirrors `keysStore.js`)
+- Per-job prompt override via two editable textareas (background + lighting prompts sent as separate form fields; 500-char cap each)
+- Settings tab "AI Restyle" with full preset CRUD (star default / edit / delete; refuses to delete the default)
+- Backend: `app/restyle/pipeline.py` 7-step async orchestrator (probe → extract first frame → Nano-Banana relight → fal.ai v2v → mux audio → publish), 30s hard duration cap, original audio preserved bit-for-bit via `video/ffmpeg.py:mux_video_audio`
+- `POST /api/restyle` + `GET /api/restyle/{job_id}` with auth-first guards, 250MB upload cap (`AI_RESTYLE_MAX_FILE_SIZE_MB` env-overridable) + Content-Length preflight, `_ensure_video_upload` MIME+`ftyp` magic-byte validation
+- "Send to Short-form" CTA closes the loop via sessionStorage handoff to the Short-form wizard
+- Codex adversarial security audit complete: 3 HIGH fixed inline (SSRF on fal download URL → host allowlist; fal credential exfil via attacker-influenced submit response → queue-URL allowlist; 2GB→250MB disk-DoS cap + Content-Length preflight). Backend pytest 255/255 green.
 
-**Out of scope for v1 (Later):**
+**Stubbed in v1**
+- **Phase 0 model spike pending.** `backend/app/ml/video_restyle.py:MODEL_ID = "fal-ai/wan/v2.5/turbo/video-to-video"` is a placeholder. Spike to validate against Luma Photon / Runway Gen-3 Alpha on a 5s clip (≤$2/30s, ≤5min latency, motion preserved) is blocked on `FAL_KEY` in the dev environment.
+- **History tab** at `frontend/src/pages/AIRestyle/History.jsx` is a placeholder; per-job records aren't persisted beyond the in-memory `jobs[]` dict.
+- **Codex MEDIUM follow-ups (4, deferred to separate PRs):**
+  1. Prompt-injection hardening — `ml/frame_relight.py:26-35` interpolates user prompts raw; should delimit them as untrusted data alongside the hard-coded `SAFETY_CONSTRAINTS` block.
+  2. AI Restyle bypasses `_job_lock` — `restyle/pipeline.py` mutates `jobs[job_id]` directly. Today's risk is consistency-only (single writer per job_id, reader is GET-only); a small job-store helper would prevent future TOCTOU.
+  3. Gemini content-policy refusal — `frame_relight.py:63-78` infers refusal from "no image parts" rather than the typed `google-genai` exception; broad `except Exception` in `restyle/pipeline.py:129-132` masks types.
+  4. fal client error mapping — `integrations/fal.py:97-105,109-112` poll/result responses don't `raise_for_status()`; permanent 401/403/404 during poll gets retried until timeout.
+
+**Later**
 - >30s clips via chunked v2v (3-minute "AI ads" use case)
 - Bridge from Short-form Review's stage selector ("+ AI Restyle" stage)
 - Auto-suggest preset based on the source frame
 - Backend-stored preset sharing / team marketplace
+- DRY: retire `app/saas/pipeline.py:_fal_run` + `_fal_upload_file` in favor of `app/integrations/fal.py`
 
-**Risks:** Video-to-video model choice deferred to Phase 0 spike (Wan v2.5 / Luma Ray2 / Runway Gen-3 Alpha candidates). If no fal.ai model meets the acceptance bar, fallback is direct Runway API integration (~1 extra day).
+**Risks remaining:** Video-to-video model choice still deferred to Phase 0 spike. If no fal.ai model meets the acceptance bar, fallback is direct Runway API integration (~1 extra day, would land under `app/integrations/runway.py`).
 
 ---
 
