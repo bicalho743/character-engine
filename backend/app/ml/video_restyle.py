@@ -14,7 +14,7 @@ import os
 
 import httpx
 
-from app.integrations.fal import submit_and_poll, upload_file
+from app.integrations.fal import require_fal_download_url, submit_and_poll, upload_file
 
 
 MODEL_ID = "fal-ai/wan/v2.5/turbo/video-to-video"
@@ -63,6 +63,11 @@ def restyle_video(
     )
     if not out_url:
         raise RuntimeError(f"fal.ai v2v response carried no video URL: {response!r}")
+
+    # SSRF defense: the URL came from the model response, so we don't
+    # trust it. Reject anything that isn't a fal-controlled host before
+    # opening a connection. (Codex HIGH-1)
+    out_url = require_fal_download_url(out_url)
 
     with httpx.Client(timeout=300.0) as client:
         with client.stream("GET", out_url) as r:

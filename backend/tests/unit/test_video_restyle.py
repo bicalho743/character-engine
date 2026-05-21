@@ -27,7 +27,7 @@ def test_restyle_video_calls_chosen_model(tmp_path):
     ref.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
     out = tmp_path / "out.mp4"
 
-    fake_submit = MagicMock(return_value={"video": {"url": "https://cdn.fal/out.mp4"}})
+    fake_submit = MagicMock(return_value={"video": {"url": "https://v3.fal.media/files/out.mp4"}})
     fake_upload = MagicMock(side_effect=[
         "https://cdn.fal/in.mp4",
         "https://cdn.fal/ref.png",
@@ -119,7 +119,7 @@ def test_restyle_video_creates_output_dir(tmp_path):
     ref.write_bytes(b"png")
     out = tmp_path / "nested" / "dir" / "out.mp4"
 
-    fake_submit = MagicMock(return_value={"video": {"url": "https://cdn/out.mp4"}})
+    fake_submit = MagicMock(return_value={"video": {"url": "https://v3.fal.media/files/out.mp4"}})
     fake_upload = MagicMock(side_effect=["u1", "u2"])
 
     stream_ctx = MagicMock()
@@ -141,3 +141,31 @@ def test_restyle_video_creates_output_dir(tmp_path):
 
     assert result == str(out)
     assert out.exists()
+
+
+def test_restyle_video_rejects_untrusted_download_url(tmp_path):
+    """The fal response's video URL must be on a fal-controlled host. A
+    payload pointing at an attacker host (or internal address) must be
+    rejected BEFORE httpx.stream() opens the connection."""
+    from app.integrations.fal import FalError
+
+    video = tmp_path / "in.mp4"
+    video.write_bytes(b"\x00\x00\x00\x18ftypisom" + b"\x00" * 100)
+    ref = tmp_path / "ref.png"
+    ref.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    out = tmp_path / "out.mp4"
+
+    fake_submit = MagicMock(return_value={"video": {"url": "http://169.254.169.254/latest/meta-data/"}})
+    fake_upload = MagicMock(side_effect=["u1", "u2"])
+
+    with patch("app.ml.video_restyle.submit_and_poll", fake_submit), \
+         patch("app.ml.video_restyle.upload_file", fake_upload):
+        with pytest.raises(FalError, match="untrusted fal download URL"):
+            restyle_video(
+                api_key="x",
+                video_path=str(video),
+                reference_frame_path=str(ref),
+                out_path=str(out),
+            )
+    # Output must not have been created.
+    assert not out.exists()

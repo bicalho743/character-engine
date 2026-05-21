@@ -17,6 +17,7 @@ import json
 import os
 import time
 from typing import Any, Dict
+from urllib.parse import urlparse
 
 import httpx
 
@@ -24,8 +25,56 @@ import httpx
 FAL_QUEUE_BASE = "https://queue.fal.run"
 FAL_STORAGE_INITIATE_URL = "https://rest.alpha.fal.ai/storage/upload/initiate"
 
+# Hosts we trust to receive the fal API key (queue / status / response URLs).
+# Trimmed to a single host because the submit response sometimes echoes back
+# attacker-influenced fields (Codex HIGH-2: status_url/response_url trust).
+_TRUSTED_QUEUE_HOST = "queue.fal.run"
+
+# Hosts we trust to download model output FROM. fal serves results from
+# *.fal.media (CDN), occasionally *.fal.run for synchronous results.
+# (Codex HIGH-1: SSRF / internal-network fetch via attacker-influenced
+# response payload.)
+_TRUSTED_DOWNLOAD_SUFFIXES = (".fal.ai", ".fal.run", ".fal.media")
+_TRUSTED_DOWNLOAD_HOSTS = {"fal.ai", "fal.run", "fal.media"}
+
 DEFAULT_TIMEOUT = 600
 DEFAULT_POLL_INTERVAL = 5
+
+
+def require_fal_queue_url(url: str) -> str:
+    """Reject any URL that isn't an HTTPS queue.fal.run endpoint.
+
+    Called on status_url and response_url from the submit response — those
+    fields will be hit with the fal API key in an Authorization header,
+    so the host must be one we trust with that secret.
+    """
+    if not isinstance(url, str) or not url:
+        raise FalError("untrusted fal queue URL: empty or non-string")
+    p = urlparse(url)
+    if p.scheme != "https" or p.hostname != _TRUSTED_QUEUE_HOST:
+        raise FalError(f"untrusted fal queue URL host: {p.hostname or url!r}")
+    return url
+
+
+def require_fal_download_url(url: str) -> str:
+    """Reject any URL that doesn't point at a fal-controlled host.
+
+    Called before we stream a model result. The fal API can return any
+    URL it likes in the response payload; we won't fetch unless the host
+    is something we recognize (subdomain of .fal.ai / .fal.run / .fal.media
+    or the bare hostnames).
+    """
+    if not isinstance(url, str) or not url:
+        raise FalError("untrusted fal download URL: empty or non-string")
+    p = urlparse(url)
+    host = (p.hostname or "").lower()
+    if p.scheme != "https":
+        raise FalError(f"untrusted fal download URL scheme: {p.scheme!r}")
+    if host in _TRUSTED_DOWNLOAD_HOSTS:
+        return url
+    if any(host.endswith(suffix) for suffix in _TRUSTED_DOWNLOAD_SUFFIXES):
+        return url
+    raise FalError(f"untrusted fal download URL host: {host!r}")
 
 
 _CONTENT_TYPES = {
@@ -80,12 +129,12 @@ def submit_and_poll(
     if not request_id:
         return submit_data
 
-    status_url = submit_data.get(
+    status_url = require_fal_queue_url(submit_data.get(
         "status_url", f"{FAL_QUEUE_BASE}/{model_id}/requests/{request_id}/status"
-    )
-    response_url = submit_data.get(
+    ))
+    response_url = require_fal_queue_url(submit_data.get(
         "response_url", f"{FAL_QUEUE_BASE}/{model_id}/requests/{request_id}"
-    )
+    ))
 
     poll_headers = {"Authorization": f"Key {fal_key}"}
     start = time.time()

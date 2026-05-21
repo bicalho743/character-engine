@@ -194,3 +194,53 @@ def test_upload_file_two_step(tmp_path):
 def test_upload_file_missing(tmp_path):
     with pytest.raises(FileNotFoundError):
         upload_file(str(tmp_path / "nope.png"), "fkey")
+
+
+# ── URL allowlist (Codex HIGH-2: queue URL trust) ───────────────────────
+
+
+def test_submit_and_poll_rejects_attacker_controlled_status_url():
+    """A submit response carrying a status_url to a non-fal host must be
+    rejected before we send the fal API key in an Authorization header."""
+    submit_resp = MagicMock(status_code=200)
+    submit_resp.json.return_value = {
+        "request_id": "abc",
+        "status_url": "http://evil.example.com/leak",
+        "response_url": f"{FAL_QUEUE_BASE}/m/requests/abc",
+    }
+    factory = _mock_client_factory([submit_resp])
+
+    with patch("app.integrations.fal.httpx.Client", side_effect=factory):
+        with pytest.raises(FalError, match="untrusted fal queue URL"):
+            submit_and_poll("m", {}, "secret")
+
+
+def test_submit_and_poll_rejects_attacker_controlled_response_url():
+    """Same defense applies to response_url."""
+    submit_resp = MagicMock(status_code=200)
+    submit_resp.json.return_value = {
+        "request_id": "abc",
+        "status_url": f"{FAL_QUEUE_BASE}/m/requests/abc/status",
+        "response_url": "https://attacker.test/exfil",
+    }
+    factory = _mock_client_factory([submit_resp])
+
+    with patch("app.integrations.fal.httpx.Client", side_effect=factory):
+        with pytest.raises(FalError, match="untrusted fal queue URL"):
+            submit_and_poll("m", {}, "secret")
+
+
+def test_submit_and_poll_rejects_non_https_queue_url():
+    """Plain HTTP queue URL must be rejected — the API key would travel
+    in cleartext."""
+    submit_resp = MagicMock(status_code=200)
+    submit_resp.json.return_value = {
+        "request_id": "abc",
+        "status_url": "http://queue.fal.run/m/requests/abc/status",
+        "response_url": f"{FAL_QUEUE_BASE}/m/requests/abc",
+    }
+    factory = _mock_client_factory([submit_resp])
+
+    with patch("app.integrations.fal.httpx.Client", side_effect=factory):
+        with pytest.raises(FalError, match="untrusted fal queue URL"):
+            submit_and_poll("m", {}, "secret")
