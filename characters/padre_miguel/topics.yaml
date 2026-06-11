@@ -1,0 +1,56 @@
+topics:
+  - id: ansiedade_noite
+    title: "Ansiedade que não deixa dormir"
+    pillar: acolhimento_emocional
+    hook: "São 2 da manhã e o seu cérebro não desliga."
+    angle: "Nomear que a ansiedade noturna é real, não é fraqueza."
+    status: pending
+
+  - id: casamento_cansado
+    title: "Quando o casamento esfria"
+    pillar: relacionamentos
+    hook: "Você olha para o lado e parece que vocês viraram colegas de quarto."
+    angle: "Normalizar que todo casamento tem fases difíceis."
+    status: pending
+
+  - id: culpa_mae
+    title: "A culpa de ser mãe imperfeita"
+    pillar: culpa_e_perdao
+    hook: "Você gritou com o seu filho hoje. E agora não consegue se perdoar."
+    angle: "Deus não mede a maternidade pelo dia mais difícil."
+    status: pending
+
+  - id: solidao_multidao
+    title: "Solidão no meio de muita gente"
+    pillar: acolhimento_emocional
+    hook: "Você pode estar rodeado de pessoas e se sentir completamente sozinho."
+    angle: "Solidão não é ausência de pessoas, é ausência de conexão."
+    status: pending
+
+  - id: fe_duvidando
+    title: "Ter fé quando está duvidando"
+    pillar: fe_no_cotidiano
+    hook: "Você está duvidando de Deus. E se sentindo culpado por isso."
+    angle: "Dúvida não é o oposto da fé."
+    status: pending
+
+  - id: medo_futuro
+    title: "Medo do que está por vir"
+    pillar: esperanca_concreta
+    hook: "Você não consegue parar de pensar no pior cenário possível."
+    angle: "O medo do futuro rouba o presente."
+    status: pending
+
+  - id: perda_pessoa_amada
+    title: "A dor de perder alguém"
+    pillar: acolhimento_emocional
+    hook: "Faz quanto tempo que você perdeu alguém e ainda dói como se fosse ontem?"
+    angle: "Luto não tem prazo."
+    status: pending
+
+  - id: recomecar_depois_erro
+    title: "Recomeçar depois de um erro grande"
+    pillar: culpa_e_perdao
+    hook: "Você fez algo que não esperava ser capaz de fazer."
+    angle: "Não existe ponto de não-retorno com Deus."
+    status: pending
