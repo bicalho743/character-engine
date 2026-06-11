@@ -1,52 +1,44 @@
-id: padre_miguel
-name: Padre Miguel
-language: pt-BR
-active: true
+# Configuração técnica do personagem Padre Miguel
+# (a "alma" fica em persona.md — aqui são só parâmetros do pipeline)
 
+name: "Padre Miguel"
+slug: "padre_miguel"
+language: "pt-BR"
+
+# ── Voz (ElevenLabs) ─────────────────────────────────────────────
+# TROQUE pelo voice_id da voz PT-BR que você escolher no ElevenLabs.
+# Dica: procure vozes masculinas calmas em português na Voice Library.
 voice:
-  provider: elevenlabs
-  voice_id: "PREENCHER_VOICE_ID_ELEVENLABS"
-  model: eleven_multilingual_v2
-  settings:
-    stability: 0.55
-    similarity_boost: 0.80
-    style: 0.30
-    use_speaker_boost: true
+  voice_id: "SUBSTITUA_PELO_VOICE_ID"
+  model_id: "eleven_multilingual_v2"
+  stability: 0.55
+  similarity_boost: 0.75
+  style: 0.30
 
+# ── Avatar ───────────────────────────────────────────────────────
+# Coloque a imagem base (Midjourney) em characters/padre_miguel/avatar/base.png
+# Retrato 3:4 ou 9:16, rosto bem visível, fundo do cenário padrão da persona.
 avatar:
-  path: "characters/padre_miguel/avatar/base.png"
-  description: >
-    Brazilian Catholic priest, age 50-55, slightly graying temples,
-    warm brown eyes, calm and kind expression, wearing a simple black
-    cassock with white collar, soft window lighting
+  image: "characters/padre_miguel/avatar/base.png"
 
+# ── Vídeo ────────────────────────────────────────────────────────
+# lowcost  = Hailuo img2video + VEED Lipsync (~$0.65/vídeo)
+# premium  = Kling Avatar v2 (~$2/vídeo)
 video:
-  mode: lowcost
-  duration_target: 50
-  aspect_ratio: "9:16"
+  mode: "lowcost"
+  duration_target: 25          # segundos (20-30)
+  broll_style: >
+    Cinematic, warm light. Interior of a simple Catholic church, candles,
+    stained glass, rosary beads, open Bible, hands in prayer, soft sun rays.
+    NO readable text, NO faces of real people.
 
-publishing:
-  platforms:
-    - instagram_reels
-    - tiktok
-  schedule: "08:00,19:00"
-  hashtags:
+# ── Publicação (Upload-Post) ─────────────────────────────────────
+publish:
+  upload_post_user: "padre_miguel"     # profile criado no app.upload-post.com
+  platforms: ["instagram", "tiktok", "youtube"]
+  default_hashtags:
+    - "#fecatolica"
     - "#padremiguel"
-    - "#fe"
-    - "#espiritualidade"
-    - "#catolicismo"
-    - "#ansiedade"
-    - "#acolhimento"
-    - "#deus"
+    - "#evangelho"
+    - "#igrejacatolica"
     - "#oracao"
-
-script:
-  model: gpt-4o-mini
-  max_tokens: 1000
-  sign_off: "Fica com Deus. E até o próximo vídeo."
-  content_pillars:
-    - acolhimento_emocional
-    - fe_no_cotidiano
-    - relacionamentos
-    - culpa_e_perdao
-    - esperanca_concreta

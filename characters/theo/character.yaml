@@ -1,0 +1,34 @@
+# Configuração técnica do personagem Theo (Theo Explica)
+# Skeleton — migre aqui a persona completa do seu projeto Theo Explica
+# quando decidir unificar os dois personagens neste motor.
+
+name: "Theo"
+slug: "theo"
+language: "pt-BR"
+
+voice:
+  voice_id: "SUBSTITUA_PELO_VOICE_ID"
+  model_id: "eleven_multilingual_v2"
+  stability: 0.50
+  similarity_boost: 0.75
+  style: 0.40
+
+avatar:
+  image: "characters/theo/avatar/base.png"
+
+video:
+  mode: "lowcost"
+  duration_target: 25
+  broll_style: >
+    Cinematic, soft ethereal light. Cozy reading nook, open old books, candle
+    light, starry sky, gentle nature scenes, a husky dog and a caramel mutt.
+    NO readable text, NO faces of real people.
+
+publish:
+  upload_post_user: "theo_explica"
+  platforms: ["instagram", "tiktok"]
+  default_hashtags:
+    - "#espiritismo"
+    - "#theoexplica"
+    - "#kardec"
+    - "#evangelhonolar"
