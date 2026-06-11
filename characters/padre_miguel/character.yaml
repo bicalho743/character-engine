@@ -1,0 +1,52 @@
+id: padre_miguel
+name: Padre Miguel
+language: pt-BR
+active: true
+
+voice:
+  provider: elevenlabs
+  voice_id: "PREENCHER_VOICE_ID_ELEVENLABS"
+  model: eleven_multilingual_v2
+  settings:
+    stability: 0.55
+    similarity_boost: 0.80
+    style: 0.30
+    use_speaker_boost: true
+
+avatar:
+  path: "characters/padre_miguel/avatar/base.png"
+  description: >
+    Brazilian Catholic priest, age 50-55, slightly graying temples,
+    warm brown eyes, calm and kind expression, wearing a simple black
+    cassock with white collar, soft window lighting
+
+video:
+  mode: lowcost
+  duration_target: 50
+  aspect_ratio: "9:16"
+
+publishing:
+  platforms:
+    - instagram_reels
+    - tiktok
+  schedule: "08:00,19:00"
+  hashtags:
+    - "#padremiguel"
+    - "#fe"
+    - "#espiritualidade"
+    - "#catolicismo"
+    - "#ansiedade"
+    - "#acolhimento"
+    - "#deus"
+    - "#oracao"
+
+script:
+  model: gpt-4o-mini
+  max_tokens: 1000
+  sign_off: "Fica com Deus. E até o próximo vídeo."
+  content_pillars:
+    - acolhimento_emocional
+    - fe_no_cotidiano
+    - relacionamentos
+    - culpa_e_perdao
+    - esperanca_concreta
