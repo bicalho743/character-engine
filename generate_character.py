@@ -1,170 +1,110 @@
 #!/usr/bin/env python3
-"""
-generate_character.py — CLI da fábrica de personagens.
-
-Uso típico:
-
-  # Gerar vídeo do Padre Miguel sobre um tema específico:
-  python generate_character.py --character padre_miguel \
-      --topic "Por que rezamos pelos mortos?"
-
-  # Pegar o próximo tema pendente da fila (topics.yaml) e gerar:
-  python generate_character.py --character padre_miguel --next
-
-  # Gerar E publicar (Instagram + TikTok + YouTube via Upload-Post):
-  python generate_character.py --character padre_miguel --next --publish
-
-  # Agendar publicação:
-  python generate_character.py --character padre_miguel --next --publish \
-      --schedule "2026-06-15 19:00"
-
-  # Só gerar o roteiro (rápido e grátis, para revisar antes de gastar API):
-  python generate_character.py --character padre_miguel --next --script-only
-
-Chaves de API: defina no .env ou como variáveis de ambiente:
-  GEMINI_API_KEY, FAL_KEY, ELEVENLABS_API_KEY, UPLOAD_POST_API_KEY
-
-Para automação (n8n/cron no Railway), basta chamar este script com --next --publish.
-"""
-
+import argparse
+import json
 import os
 import sys
-import json
-import argparse
-import datetime
-
+import yaml
+from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from character_shorts import (
-    list_characters,
-    load_character,
-    validate_character,
-    next_pending_topic,
-    mark_topic_done,
-    generate_character_script,
-    generate_character_video,
-    publish_character_video,
-)
+CHARACTERS_DIR = Path(__file__).parent / "characters"
 
-OUTPUT_BASE = os.environ.get("CHARACTER_OUTPUT_DIR", "output/characters")
+
+def list_characters():
+    chars = []
+    for d in CHARACTERS_DIR.iterdir():
+        if d.is_dir() and (d / "character.yaml").exists():
+            with open(d / "character.yaml", encoding="utf-8") as f:
+                cfg = yaml.safe_load(f)
+            chars.append({
+                "id": d.name,
+                "name": cfg.get("name", d.name),
+                "active": cfg.get("active", False),
+            })
+    return chars
+
+
+def list_topics(character_id: str):
+    topics_path = CHARACTERS_DIR / character_id / "topics.yaml"
+    if not topics_path.exists():
+        return []
+    with open(topics_path, encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    return data.get("topics", [])
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Gera vídeos de personagens de IA")
-    parser.add_argument("--character", "-c", required=False, help="Slug do personagem (ex: padre_miguel)")
-    parser.add_argument("--topic", "-t", help="Tema do vídeo")
-    parser.add_argument("--next", action="store_true", help="Usar o próximo tema pendente do topics.yaml")
-    parser.add_argument("--script-only", action="store_true", help="Gera apenas o roteiro (não gasta fal.ai/ElevenLabs)")
-    parser.add_argument("--publish", action="store_true", help="Publica nas redes após gerar (Upload-Post)")
-    parser.add_argument("--schedule", help='Agendar publicação: "YYYY-MM-DD HH:MM" (horário de Brasília)')
-    parser.add_argument("--mode", choices=["lowcost", "premium"], help="Sobrescreve o modo de vídeo do character.yaml")
-    parser.add_argument("--list", action="store_true", help="Lista personagens disponíveis")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--character")
+    parser.add_argument("--next", action="store_true")
+    parser.add_argument("--topic")
+    parser.add_argument("--script-only", action="store_true")
+    parser.add_argument("--list-characters", action="store_true")
+    parser.add_argument("--list-topics", action="store_true")
+    parser.add_argument("--json-output", action="store_true")
     args = parser.parse_args()
 
-    if args.list or not args.character:
-        print("Personagens disponíveis:")
-        for slug in list_characters():
-            print(f"  - {slug}")
-        if not args.character:
-            sys.exit(0)
+    if args.list_characters:
+        for c in list_characters():
+            print(f"  {c['id']} — {c['name']}")
+        return
+
+    if not args.character:
+        parser.print_help()
+        sys.exit(1)
+
+    if args.list_topics:
+        for t in list_topics(args.character):
+            icon = "✅" if t.get("status") == "done" else "⏳"
+            print(f"  {icon} [{t['id']}] {t['title']}")
+        return
+
+    from character_shorts import load_character, pick_next_topic, generate_character_script
 
     character = load_character(args.character)
 
-    # Validação
-    problems = validate_character(character)
-    if problems:
-        print("⚠️  Problemas de configuração:")
-        for p in problems:
-            print(f"   - {p}")
-        if not args.script_only:
-            print("Corrija antes de gerar o vídeo (com --script-only dá para testar o roteiro mesmo assim).")
-            sys.exit(1)
-
-    if args.mode:
-        character["config"].setdefault("video", {})["mode"] = args.mode
-
-    # Tema
-    topic_item = None
     if args.next:
-        topic_item = next_pending_topic(character)
-        if not topic_item:
-            print("Nenhum tema pendente em topics.yaml. Adicione temas ou use --topic.")
+        topic = pick_next_topic(character, mark_done=False)
+        if topic is None:
+            print(f"❌ Sem temas pendentes para {args.character}.")
             sys.exit(1)
-        topic = topic_item["topic"]
-        print(f"📋 Próximo tema da fila: {topic}")
     elif args.topic:
-        topic = args.topic
+        matching = [t for t in character["topics"] if t["id"] == args.topic]
+        if not matching:
+            print(f"❌ Tema '{args.topic}' não encontrado.")
+            sys.exit(1)
+        topic = matching[0]
     else:
-        print("Informe --topic \"...\" ou use --next para pegar da fila.")
+        print("❌ Use --next ou --topic <id>")
         sys.exit(1)
 
-    # Chaves
-    gemini_key = os.environ.get("GEMINI_API_KEY", "")
-    if not gemini_key:
-        print("Defina GEMINI_API_KEY no .env")
+    openai_key = os.environ.get("OPENAI_API_KEY")
+    if not openai_key:
+        print("❌ OPENAI_API_KEY não configurado no .env")
         sys.exit(1)
-
-    # 1) Roteiro
-    script = generate_character_script(character, topic, gemini_key)
-
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = os.path.join(OUTPUT_BASE, character["slug"], timestamp)
-    os.makedirs(output_dir, exist_ok=True)
-
-    script_path = os.path.join(output_dir, "script.json")
-    with open(script_path, "w", encoding="utf-8") as f:
-        json.dump(script, f, ensure_ascii=False, indent=2)
-
-    print(f"\n──── ROTEIRO ────")
-    print(f"Título: {script.get('title')}")
-    for seg in script.get("segments", []):
-        print(f"  [{seg['type']:<12}] {seg.get('narration', '')}")
-    print(f"Caption: {script.get('caption', '')}")
-    print(f"Salvo em: {script_path}\n")
 
     if args.script_only:
-        print("✅ --script-only: parando aqui (nenhum custo de vídeo/voz).")
-        sys.exit(0)
+        script = generate_character_script(character, topic, openai_key)
 
-    # 2) Vídeo
-    fal_key = os.environ.get("FAL_KEY", "")
-    eleven_key = os.environ.get("ELEVENLABS_API_KEY", "")
-    if not fal_key or not eleven_key:
-        print("Defina FAL_KEY e ELEVENLABS_API_KEY no .env")
-        sys.exit(1)
+        if args.json_output:
+            print(json.dumps({"topic": topic, "script": script},
+                             ensure_ascii=False, indent=2))
+        else:
+            print(f"\n{'='*50}")
+            print(f"ROTEIRO: {script.get('title', '?')}")
+            print(f"{'='*50}")
+            for seg in script.get("segments", []):
+                print(f"\n[{seg['type'].upper()} {seg['start']}–{seg['end']}s]")
+                print(f"  Narração: {seg['narration']}")
+                if seg.get("broll_prompt"):
+                    print(f"  B-roll:   {seg['broll_prompt']}")
+            print(f"\nNarração completa:\n{script.get('full_narration', '')}")
+            print(f"\nCaption: {script.get('caption', '')}")
+        return
 
-    result = generate_character_video(
-        character, script, fal_key, eleven_key, output_dir
-    )
-    print(f"\n🎬 Vídeo final: {result['video_path']}")
-    print(f"💰 Custo estimado: ${result['cost_estimate']['total']}")
-
-    # 3) Fila
-    if topic_item:
-        mark_topic_done(character, topic, result.get("video_filename", ""))
-        print("📋 Tema marcado como 'done' no topics.yaml")
-
-    # 4) Publicação
-    if args.publish:
-        up_key = os.environ.get("UPLOAD_POST_API_KEY", "")
-        if not up_key:
-            print("Defina UPLOAD_POST_API_KEY no .env para publicar.")
-            sys.exit(1)
-        scheduled = None
-        if args.schedule:
-            scheduled = args.schedule.replace(" ", "T") + ":00"
-        publish_character_video(
-            character,
-            result["video_path"],
-            title=script.get("title", "Vídeo"),
-            caption=script.get("caption", ""),
-            upload_post_key=up_key,
-            scheduled_date=scheduled,
-        )
-
-    print("\n✅ Concluído.")
+    print("❌ Geração de vídeo ainda não implementada. Use --script-only.")
 
 
 if __name__ == "__main__":
