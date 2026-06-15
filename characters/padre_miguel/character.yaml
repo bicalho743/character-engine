@@ -22,6 +22,11 @@ avatar:
     banco_jardim: "characters/padre_miguel/avatar/padre_banco_jardim.png"
     jardim: "characters/padre_miguel/avatar/padre_jardim.png"
     ambiente_iluminado: "characters/padre_miguel/avatar/padreambiente_iluminado.png"
+    terco_igreja: "characters/padre_miguel/avatar/padreterçoigrejaaofundo.png"
+    iluminado_atras: "characters/padre_miguel/avatar/padreiluminadodantoatras.png"
+    lendo_biblia: "characters/padre_miguel/avatar/padrelendobibliailuminado.png"
+    terco_vitral: "characters/padre_miguel/avatar/padreterçoevitraligreja.png"
+    bracos_cruzados: "characters/padre_miguel/avatar/padrebraçoscruzados.png"
   pillar_angles:
     acolhimento_emocional: "characters/padre_miguel/avatar/base.png"
     relacionamentos: "characters/padre_miguel/avatar/padre_banco_igreja.png"
