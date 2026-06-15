@@ -160,6 +160,7 @@ def generate_kling_avatar(image_path: str, audio_path: str, fal_key: str, output
             arguments={
                 "image_url": image_url,
                 "audio_url": audio_url,
+                "prompt": "person looking directly at camera, natural eye contact, minimal head movement, speaking naturally and calmly, stable face position",
             },
         )
         print(f"    Job: {handler.request_id}")

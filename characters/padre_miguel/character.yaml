@@ -29,6 +29,7 @@ avatar:
     fe_no_cotidiano: "characters/padre_miguel/avatar/padreambiente_iluminado.png"
     esperanca_concreta: "characters/padre_miguel/avatar/padre_banco_jardim.png"
     apresentacao: "characters/padre_miguel/avatar/base.png"
+    jardim: "characters/padre_miguel/avatar/padre_jardim.png"
 video:
   mode: premium
   duration_target: 50
