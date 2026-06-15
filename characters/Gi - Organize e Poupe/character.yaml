@@ -14,18 +14,18 @@ voice:
     use_speaker_boost: true
 
 avatar:
-  path: "characters/Gi - Organize e Poupe/base.png"
+  path: "characters/Gi - Organize e Poupe/Avatar/base.png"
   angles:
-    default: "characters/Gi - Organize e Poupe/base.png"
-    cozinhando: "characters/Gi - Organize e Poupe/gicozinhando.png"
-    celular_sala: "characters/Gi - Organize e Poupe/ginocelularnasala.png"
-    celular_viajando: "characters/Gi - Organize e Poupe/ginocelularviajando.png"
-    mesa: "characters/Gi - Organize e Poupe/mesalayeflyGI.png"
+    default: "characters/Gi - Organize e Poupe/Avatar/base.png"
+    cozinhando: "characters/Gi - Organize e Poupe/Avatar/gicozinhando.png"
+    celular_sala: "characters/Gi - Organize e Poupe/Avatar/ginocelularnasala.png"
+    celular_viajando: "characters/Gi - Organize e Poupe/Avatar/ginocelularviajando.png"
+    mesa: "characters/Gi - Organize e Poupe/Avatar/mesalayeflyGI.png"
   pillar_angles:
-    default: "characters/Gi - Organize e Poupe/base.png"
-    lifestyle: "characters/Gi - Organize e Poupe/ginocelularviajando.png"
-    cozinha: "characters/Gi - Organize e Poupe/gicozinhando.png"
-    promocao: "characters/Gi - Organize e Poupe/ginocelularnasala.png"
+    default: "characters/Gi - Organize e Poupe/Avatar/base.png"
+    lifestyle: "characters/Gi - Organize e Poupe/Avatar/ginocelularviajando.png"
+    cozinha: "characters/Gi - Organize e Poupe/Avatar/gicozinhando.png"
+    promocao: "characters/Gi - Organize e Poupe/Avatar/ginocelularnasala.png"
 
 video:
   mode: premium

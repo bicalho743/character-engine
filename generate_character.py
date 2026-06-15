@@ -23,6 +23,13 @@ import yaml
 from pathlib import Path
 from dotenv import load_dotenv
 
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 load_dotenv()
 
 CHARACTERS_DIR = Path(__file__).parent / "characters"

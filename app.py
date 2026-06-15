@@ -2254,3 +2254,168 @@ async def saasshorts_voices(
         ],
         "source": "defaults",
     }
+
+
+# ==============================================================
+# UGC VIDEO PIPELINE API INTEGRATION FOR ORGANIZE-SE-BOT
+# ==============================================================
+
+class UgcProductData(BaseModel):
+    name: str
+    price: Optional[float] = None
+    originalPrice: Optional[float] = None
+    discountPct: Optional[float] = None
+    affiliateLink: str
+    imageUrl: Optional[str] = None
+    category: Optional[str] = None
+
+class UgcGenerateRequest(BaseModel):
+    job_id: str
+    product: UgcProductData
+    webhook_url: str
+
+
+def run_ugc_generation_background(job_id: str, product: UgcProductData, webhook_url: str):
+    import httpx
+    import subprocess
+    from pathlib import Path
+    
+    char_name = "Gi - Organize e Poupe"
+    char_dir = Path("characters") / char_name
+    topics_path = char_dir / "topics.yaml"
+    
+    print(f"[UGC API] Starting background pipeline for Job {job_id}")
+    
+    # 1. Append topic to topics.yaml
+    try:
+        # Create topic block
+        escape_title = product.name.replace('"', '\\"').replace('\n', ' ').strip()
+        discount_text = f" com {product.discountPct}% de desconto" if product.discountPct else ""
+        price_val = product.price if product.price is not None else 0.0
+        price_text = f" R$ {price_val:.2f}" if product.price is not None else " preço imbatível"
+        
+        orig_val = product.originalPrice if product.originalPrice is not None else 0.0
+        disc_val = product.discountPct if product.discountPct is not None else 0.0
+        
+        angle = f"Produto: {product.name}. Preço anterior: R$ {orig_val}. Preço atual: R$ {price_val}. Desconto: {disc_val}%. Link: {product.affiliateLink}."
+        escape_angle = angle.replace('"', '\\"').replace('\n', ' ').strip()
+        
+        cta = f"e tá saindo por apenas {price_text}! o link com desconto tá na bio, corre pra garantir!"
+        escape_cta = cta.replace('"', '\\"').replace('\n', ' ').strip()
+        
+        topic_entry = f"""
+  - id: "{job_id}"
+    title: "{escape_title}"
+    pillar: "promocao"
+    hook: "olha o que eu achei na shopee gente"
+    angle: "{escape_angle}"
+    cta: "{escape_cta}"
+    status: "pending"
+"""
+        
+        with open(topics_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            
+        if "topics:" not in content:
+            new_content = f"topics:{topic_entry}"
+        else:
+            new_content = content + topic_entry
+            
+        with open(topics_path, "w", encoding="utf-8") as f:
+            f.write(new_content)
+            
+    except Exception as e:
+        print(f"[UGC API] Error appending topic: {e}")
+        try:
+            httpx.post(webhook_url, json={"id": job_id, "status": "failed", "error": f"Failed to register topic: {str(e)}"}, timeout=30.0)
+        except Exception as webhook_err:
+            print(f"[UGC API] Webhook alert failed: {webhook_err}")
+        return
+
+    # 2. Run generate_character.py
+    try:
+        cmd_gen = ["python", "generate_character.py", "-c", char_name, "--topic", job_id]
+        print(f"[UGC API] Running: {' '.join(cmd_gen)}")
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+        res_gen = subprocess.run(cmd_gen, capture_output=True, text=True, env=env)
+        
+        if res_gen.returncode != 0:
+            raise Exception(f"generate_character failed: {res_gen.stderr or res_gen.stdout}")
+            
+        # 3. Run post_process.py
+        output_dir = Path("output") / char_name
+        base_video_path = output_dir / f"{job_id}_final.mp4"
+        base_audio_path = output_dir / f"{job_id}_voice.mp3"
+        caption_path = output_dir / f"{job_id}_caption.txt"
+        final_output_dir = output_dir / "final"
+        
+        hook_text = "olha o que eu achei!"
+        
+        cmd_post = [
+            "python", "post_process.py",
+            str(base_video_path).replace("\\", "/"),
+            str(base_audio_path).replace("\\", "/"),
+            hook_text,
+            str(final_output_dir).replace("\\", "/"),
+            str(caption_path).replace("\\", "/")
+        ]
+        
+        print(f"[UGC API] Running: {' '.join(cmd_post)}")
+        env_post = env.copy()
+        env_post["UPLOAD_POST_KEY"] = ""
+        res_post = subprocess.run(cmd_post, capture_output=True, text=True, env=env_post)
+        
+        if res_post.returncode != 0:
+            raise Exception(f"post_process failed: {res_post.stderr or res_post.stdout}")
+            
+        # 4. Check generated files
+        final_video_path = final_output_dir / f"{job_id}_final_pub.mp4"
+        
+        if not final_video_path.exists():
+            raise Exception("Final video file was not generated.")
+            
+        caption = ""
+        if caption_path.exists():
+            caption = caption_path.read_text(encoding="utf-8").strip()
+            
+        # Construct download URLs
+        domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+        if domain:
+            base_url = f"https://{domain}" if not domain.startswith("http") else domain
+        else:
+            base_url = "http://localhost:8000"
+            
+        video_url = f"{base_url}/videos/Gi%20-%20Organize%20e%20Poupe/final/{job_id}_final_pub.mp4"
+        thumbnail_url = f"{base_url}/videos/Gi%20-%20Organize%20e%20Poupe/final/{job_id}_thumb.jpg"
+        
+        # 5. Send completion Webhook
+        print(f"[UGC API] Generation completed successfully! Calling Webhook: {webhook_url}")
+        webhook_payload = {
+            "id": job_id,
+            "status": "completed",
+            "video_url": video_url,
+            "thumbnail_url": thumbnail_url,
+            "caption": caption
+        }
+        
+        httpx.post(webhook_url, json=webhook_payload, timeout=30.0)
+        
+    except Exception as e:
+        print(f"[UGC API] Error in generation pipeline: {e}")
+        try:
+            httpx.post(webhook_url, json={"id": job_id, "status": "failed", "error": str(e)}, timeout=30.0)
+        except Exception as webhook_err:
+            print(f"[UGC API] Webhook alert failed: {webhook_err}")
+
+
+@app.post("/api/character/generate-ugc")
+async def generate_character_ugc_api(req: UgcGenerateRequest, background_tasks: BackgroundTasks):
+    background_tasks.add_task(
+        run_ugc_generation_background,
+        req.job_id,
+        req.product,
+        req.webhook_url
+    )
+    return {"status": "accepted", "job_id": req.job_id}
+
