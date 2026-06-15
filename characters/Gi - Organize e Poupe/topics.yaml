@@ -1,0 +1,8 @@
+topics:
+  - id: "test_shopee_product"
+    title: "Mini Processador de Alimentos USB"
+    pillar: "promocao"
+    hook: "olha o que eu achei na shopee gente"
+    angle: "Produto: Mini Processador de Alimentos USB. Preço anterior: R$ 49.90. Preço atual: R$ 19.90. Desconto: 60%. Link: https://shopee.com.br/product/123/456."
+    cta: "e tá saindo por apenas R$ 19.90! o link com desconto tá na bio, corre pra garantir!"
+    status: "pending"

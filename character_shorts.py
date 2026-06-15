@@ -83,14 +83,23 @@ def generate_character_script(character: dict, topic: dict, openai_key: str) -> 
     duration = config.get("video", {}).get("duration_target", 50)
     pillar = topic.get("pillar", "")
 
-    # CTA baseado no pilar
-    cta = (
-        "Se isso tocou você, manda para alguém que precisa ouvir hoje. 🙏"
-        if pillar in ("acolhimento_emocional", "relacionamentos", "culpa_e_perdao")
-        else "Siga @conselhospadremiguel para um conselho todo dia. ✝️"
-    )
+    # CTA baseado no pilar ou fornecido no topic
+    cta = topic.get("cta")
+    if not cta:
+        cta = (
+            "Se isso tocou você, manda para alguém que precisa ouvir hoje. 🙏"
+            if pillar in ("acolhimento_emocional", "relacionamentos", "culpa_e_perdao")
+            else "Siga @conselhospadremiguel para um conselho todo dia. ✝️"
+        )
 
-    system_prompt = f"""Você é o roteirista pastoral do Padre Miguel.
+    char_dir = Path(character["char_dir"])
+    prompt_system_path = char_dir / "prompt_system.txt"
+    prompt_user_path = char_dir / "prompt_user.txt"
+
+    if prompt_system_path.exists():
+        system_prompt = prompt_system_path.read_text(encoding="utf-8")
+    else:
+        system_prompt = f"""Você é o roteirista pastoral do Padre Miguel.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 QUEM É O PADRE MIGUEL
@@ -188,7 +197,19 @@ Fechamento OBRIGATÓRIO e EXATO: "{sign_off}"
 
 RESPONDA APENAS COM JSON VÁLIDO. SEM MARKDOWN. SEM EXPLICAÇÕES."""
 
-    user_prompt = f"""Escreva um roteiro de {duration} segundos para o Padre Miguel.
+    if prompt_user_path.exists():
+        user_prompt_tmpl = prompt_user_path.read_text(encoding="utf-8")
+        user_prompt = user_prompt_tmpl.format(
+            duration=duration,
+            topic_title=topic.get("title", ""),
+            topic_pillar=topic.get("pillar", ""),
+            topic_hook=topic.get("hook", ""),
+            topic_angle=topic.get("angle", ""),
+            cta=cta,
+            sign_off=sign_off
+        )
+    else:
+        user_prompt = f"""Escreva um roteiro de {duration} segundos para o Padre Miguel.
 
 TEMA: {topic['title']}
 PILAR: {topic['pillar']}
@@ -198,7 +219,7 @@ CTA DESTE VÍDEO: {cta}
 
 CHECKLIST ANTES DE ESCREVER:
 - O hook nomeia uma dor real sem introdução?
-- Existe uma cena concreta do cotidiano (não abstrata)?
+- Existe uma cena concreta do cotidiano (not abstrata)?
 - Tem uma imagem pastoral simples?
 - Tem eco bíblico ou pastoral sem parecer aula?
 - A esperança é concreta, não motivacional?

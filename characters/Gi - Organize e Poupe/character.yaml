@@ -1,0 +1,49 @@
+id: "Gi - Organize e Poupe"
+name: "Gi"
+language: "pt-BR"
+active: true
+
+voice:
+  provider: elevenlabs
+  voice_id: "33B4UnXyTNbgLmdEDh5P"
+  model: eleven_multilingual_v2
+  settings:
+    stability: 0.50
+    similarity_boost: 0.75
+    style: 0.40
+    use_speaker_boost: true
+
+avatar:
+  path: "characters/Gi - Organize e Poupe/base.png"
+  angles:
+    default: "characters/Gi - Organize e Poupe/base.png"
+    cozinhando: "characters/Gi - Organize e Poupe/gicozinhando.png"
+    celular_sala: "characters/Gi - Organize e Poupe/ginocelularnasala.png"
+    celular_viajando: "characters/Gi - Organize e Poupe/ginocelularviajando.png"
+    mesa: "characters/Gi - Organize e Poupe/mesalayeflyGI.png"
+  pillar_angles:
+    default: "characters/Gi - Organize e Poupe/base.png"
+    lifestyle: "characters/Gi - Organize e Poupe/ginocelularviajando.png"
+    cozinha: "characters/Gi - Organize e Poupe/gicozinhando.png"
+    promocao: "characters/Gi - Organize e Poupe/ginocelularnasala.png"
+
+video:
+  mode: premium
+  duration_target: 16
+  aspect_ratio: "9:16"
+
+publishing:
+  platforms:
+    - instagram_reels
+    - tiktok
+  hashtags:
+    - "#achadinhos"
+    - "#promocao"
+    - "#shopee"
+    - "#dicas"
+    - "#achadosshopee"
+
+script:
+  model: gpt-4o
+  max_tokens: 1000
+  sign_off: ""

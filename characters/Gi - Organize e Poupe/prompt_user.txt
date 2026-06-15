@@ -1,0 +1,52 @@
+Escreva um roteiro de {duration} segundos para a Gi.
+
+DADOS DO PRODUTO:
+- Nome do Produto: {topic_title}
+- Categoria/Pilar: {topic_pillar}
+- Preço e Link de Afiliado (para o CTA): {cta}
+- Gancho Sugerido (Hook): {topic_hook}
+- Fatos/Curiosidades do Produto: {topic_angle}
+
+ESTRUTURA DE SEGMENTOS EXATA:
+- De 0 a 3s: Gancho (Hook) que chama a atenção do espectador imediatamente.
+- De 3 a 13s: Curiosidade real ou benefício surpreendente do produto.
+- De 13 a 16s: CTA exposto com o preço de forma animada e espontânea.
+
+Retorne EXATAMENTE este JSON:
+{{
+  "title": "título interno de 2-4 palavras",
+  "duration_seconds": {duration},
+  "hook_text": "2-3 palavras para overlay no vídeo (sem pontuação)",
+  "segments": [
+    {{
+      "type": "hook",
+      "start": 0,
+      "end": 3,
+      "narration": "narração de impacto com tom natural e amigável da Gi",
+      "visual": "actor_talking",
+      "broll_prompt": null,
+      "subtitle_text": "legenda do gancho"
+    }},
+    {{
+      "type": "curiosity",
+      "start": 3,
+      "end": 13,
+      "narration": "narração explicando a curiosidade/benefício do produto na voz informal da Gi",
+      "visual": "broll",
+      "broll_prompt": "cinematic scene: close up of the product being used or shown in aesthetic lighting",
+      "subtitle_text": "legenda da curiosidade"
+    }},
+    {{
+      "type": "cta",
+      "start": 13,
+      "end": {duration},
+      "narration": "narração da Gi revelando o preço e chamando para clicar no link na bio",
+      "visual": "actor_talking",
+      "broll_prompt": null,
+      "subtitle_text": "legenda do cta"
+    }}
+  ],
+  "full_narration": "toda a narração unida em sequência",
+  "caption": "legenda do post curta e amigável + hashtag #achadinhos #promocao",
+  "hashtags": ["#achadinhos", "#promocao", "#shopee"]
+}}
