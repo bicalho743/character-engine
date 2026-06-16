@@ -2273,41 +2273,47 @@ class UgcGenerateRequest(BaseModel):
     job_id: str
     product: UgcProductData
     webhook_url: str
+    character: Optional[str] = "Gi - Organize e Poupe"
 
 
-def run_ugc_generation_background(job_id: str, product: UgcProductData, webhook_url: str):
+def run_ugc_generation_background(job_id: str, product: UgcProductData, webhook_url: str, char_name: str = "Gi - Organize e Poupe"):
     import httpx
     import subprocess
     from pathlib import Path
     
-    char_name = "Gi - Organize e Poupe"
     char_dir = Path("characters") / char_name
     topics_path = char_dir / "topics.yaml"
     
-    print(f"[UGC API] Starting background pipeline for Job {job_id}")
+    print(f"[UGC API] Starting background pipeline for Job {job_id} using character {char_name}")
     
     # 1. Append topic to topics.yaml
     try:
-        # Create topic block
         escape_title = product.name.replace('"', '\\"').replace('\n', ' ').strip()
-        discount_text = f" com {product.discountPct}% de desconto" if product.discountPct else ""
-        price_val = product.price if product.price is not None else 0.0
-        price_text = f" R$ {price_val:.2f}" if product.price is not None else " preço imbatível"
         
-        orig_val = product.originalPrice if product.originalPrice is not None else 0.0
-        disc_val = product.discountPct if product.discountPct is not None else 0.0
-        
-        angle = f"Produto: {product.name}. Preço anterior: R$ {orig_val}. Preço atual: R$ {price_val}. Desconto: {disc_val}%. Link: {product.affiliateLink}."
+        if char_name == "Gi - Organize e Poupe":
+            orig_val = product.originalPrice if product.originalPrice is not None else 0.0
+            disc_val = product.discountPct if product.discountPct is not None else 0.0
+            price_val = product.price if product.price is not None else 0.0
+            price_text = f" R$ {price_val:.2f}" if product.price is not None else " preço imbatível"
+            
+            angle = f"Produto: {product.name}. Preço anterior: R$ {orig_val}. Preço atual: R$ {price_val}. Desconto: {disc_val}%. Link: {product.affiliateLink}."
+            cta = f"e tá saindo por apenas {price_text}! o link com desconto tá na bio, corre pra garantir!"
+            hook = "olha o que eu achei na shopee gente"
+            pillar = "promocao"
+        else:
+            angle = product.name
+            cta = "Reflita sobre isso e compartilhe com quem você ama."
+            hook = "Você já parou para pensar nisso?"
+            pillar = "reflexao"
+            
         escape_angle = angle.replace('"', '\\"').replace('\n', ' ').strip()
-        
-        cta = f"e tá saindo por apenas {price_text}! o link com desconto tá na bio, corre pra garantir!"
         escape_cta = cta.replace('"', '\\"').replace('\n', ' ').strip()
         
         topic_entry = f"""
   - id: "{job_id}"
     title: "{escape_title}"
-    pillar: "promocao"
-    hook: "olha o que eu achei na shopee gente"
+    pillar: "{pillar}"
+    hook: "{hook}"
     angle: "{escape_angle}"
     cta: "{escape_cta}"
     status: "pending"
@@ -2350,8 +2356,20 @@ def run_ugc_generation_background(job_id: str, product: UgcProductData, webhook_
         caption_path = output_dir / f"{job_id}_caption.txt"
         final_output_dir = output_dir / "final"
         
+        # Resolve hook dynamically
         hook_text = "olha o que eu achei!"
-        
+        try:
+            import yaml
+            if topics_path.exists():
+                with open(topics_path, "r", encoding="utf-8") as f:
+                    topics_data = yaml.safe_load(f) or {}
+                topics_list = topics_data.get("topics", [])
+                matching_topic = next((t for t in topics_list if str(t.get("id")) == str(job_id)), None)
+                if matching_topic and matching_topic.get("hook"):
+                    hook_text = matching_topic.get("hook")
+        except Exception as e:
+            print(f"[UGC API] Error reading hook: {e}")
+            
         cmd_post = [
             "python", "post_process.py",
             str(base_video_path).replace("\\", "/"),
@@ -2386,8 +2404,10 @@ def run_ugc_generation_background(job_id: str, product: UgcProductData, webhook_
         else:
             base_url = "http://localhost:8000"
             
-        video_url = f"{base_url}/videos/Gi%20-%20Organize%20e%20Poupe/final/{job_id}_final_pub.mp4"
-        thumbnail_url = f"{base_url}/videos/Gi%20-%20Organize%20e%20Poupe/final/{job_id}_thumb.jpg"
+        from urllib.parse import quote
+        quoted_char = quote(char_name)
+        video_url = f"{base_url}/videos/{quoted_char}/final/{job_id}_final_pub.mp4"
+        thumbnail_url = f"{base_url}/videos/{quoted_char}/final/{job_id}_thumb.jpg"
         
         # 5. Send completion Webhook
         print(f"[UGC API] Generation completed successfully! Calling Webhook: {webhook_url}")
@@ -2415,7 +2435,8 @@ async def generate_character_ugc_api(req: UgcGenerateRequest, background_tasks: 
         run_ugc_generation_background,
         req.job_id,
         req.product,
-        req.webhook_url
+        req.webhook_url,
+        req.character
     )
     return {"status": "accepted", "job_id": req.job_id}
 
