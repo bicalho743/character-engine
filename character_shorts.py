@@ -77,7 +77,7 @@ def pick_next_topic(character: dict, mark_done: bool = False) -> Optional[dict]:
     return topic
 
 
-def generate_character_script(character: dict, topic: dict, openai_key: str) -> dict:
+def generate_character_script(character: dict, topic: dict, openai_key: Optional[str] = None, gemini_key: Optional[str] = None) -> dict:
     config = character["config"]
     sign_off = config.get("script", {}).get("sign_off", "Fica com Deus. E até o próximo vídeo.")
     duration = config.get("video", {}).get("duration_target", 50)
@@ -284,29 +284,74 @@ Retorne EXATAMENTE este JSON:
   "hashtags": ["#padremiguel", "#fe", "#espiritualidade", "#catolicismo", "#acolhimento"]
 }}"""
 
-    headers = {
-        "Authorization": f"Bearer {openai_key}",
-        "Content-Type": "application/json",
-    }
-    body = {
-        "model": config.get("script", {}).get("model", "gpt-4o-mini"),
-        "max_tokens": 1500,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        "response_format": {"type": "json_object"},
-    }
+    script = None
+    last_error = None
 
-    print(f"[character_shorts] Gerando roteiro: {topic['title']}...")
+    if openai_key:
+        try:
+            headers = {
+                "Authorization": f"Bearer {openai_key}",
+                "Content-Type": "application/json",
+            }
+            body = {
+                "model": config.get("script", {}).get("model", "gpt-4o-mini"),
+                "max_tokens": 1500,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "response_format": {"type": "json_object"},
+            }
 
-    with httpx.Client(timeout=60.0) as client:
-        resp = client.post(f"{OPENAI_API_BASE}/chat/completions", headers=headers, json=body)
-        if resp.status_code != 200:
-            raise Exception(f"OpenAI error ({resp.status_code}): {resp.text[:300]}")
+            print(f"[character_shorts] Gerando roteiro com OpenAI: {topic['title']}...")
 
-    data = resp.json()
-    raw = data["choices"][0]["message"]["content"]
-    script = json.loads(raw)
-    print(f"[character_shorts] ✅ Roteiro gerado: {script.get('title', '?')}")
+            with httpx.Client(timeout=60.0) as client:
+                resp = client.post(f"{OPENAI_API_BASE}/chat/completions", headers=headers, json=body)
+                if resp.status_code != 200:
+                    raise Exception(f"OpenAI error ({resp.status_code}): {resp.text[:300]}")
+
+            data = resp.json()
+            raw = data["choices"][0]["message"]["content"]
+            script = json.loads(raw)
+            print(f"[character_shorts] ✅ Roteiro gerado com OpenAI: {script.get('title', '?')}")
+        except Exception as e:
+            print(f"[character_shorts] ⚠️ Falha ao gerar roteiro com OpenAI: {e}")
+            last_error = e
+
+    if not script and gemini_key:
+        try:
+            from google import genai
+            from google.genai import types
+
+            print(f"[character_shorts] Gerando roteiro com Gemini: {topic['title']}...")
+            client = genai.Client(api_key=gemini_key)
+
+            model = config.get("script", {}).get("gemini_model", "gemini-2.5-flash")
+
+            config_gen = types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                response_mime_type="application/json",
+                max_output_tokens=8192,
+                temperature=0.7,
+            )
+
+            response = client.models.generate_content(
+                model=model,
+                contents=user_prompt,
+                config=config_gen
+            )
+
+            raw = response.text
+            if not raw:
+                raise Exception("Gemini returned empty response")
+
+            script = json.loads(raw)
+            print(f"[character_shorts] ✅ Roteiro gerado com Gemini: {script.get('title', '?')}")
+        except Exception as e:
+            print(f"[character_shorts] ⚠️ Falha ao gerar roteiro com Gemini: {e}")
+            last_error = e
+
+    if not script:
+        raise Exception(f"Não foi possível gerar o roteiro com nenhum dos provedores disponíveis. Último erro: {last_error}")
+
     return script

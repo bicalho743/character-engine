@@ -261,13 +261,14 @@ def main():
             sys.exit(1)
 
         openai_key = os.environ.get("OPENAI_API_KEY")
-        if not openai_key:
-            print("❌ OPENAI_API_KEY não configurado.")
+        gemini_key = os.environ.get("GEMINI_API_KEY")
+        if not openai_key and not gemini_key:
+            print("❌ Nenhuma chave de API (OPENAI_API_KEY ou GEMINI_API_KEY) configurada.")
             sys.exit(1)
 
         print(f"\nPersonagem: {char_config['name']}")
         print(f"Tema: {topic['title']}\n")
-        script = generate_character_script(character, topic, openai_key)
+        script = generate_character_script(character, topic, openai_key=openai_key, gemini_key=gemini_key)
 
     if args.script_only:
         output_dir = Path(args.output_dir) / args.character
