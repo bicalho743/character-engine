@@ -5,7 +5,7 @@ active: true
 
 voice:
   provider: elevenlabs
-  voice_id: "${ELEVENLABS_VOICE_ID}"   # configurar no ambiente — não versionar o ID real em repo público
+  voice_id: "Zo92spn15z5bSH9pW8nm"
   model: eleven_multilingual_v2
   settings:
     stability: 0.50
