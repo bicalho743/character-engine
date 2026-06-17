@@ -41,26 +41,30 @@ def get_video_dimensions(video_path):
 
 
 def gerar_srt(audio_path, srt_path):
-    import whisper
+    from faster_whisper import WhisperModel
     print("[1/5] Transcrevendo audio com word-level timestamps...")
-    model = whisper.load_model("small")
-    result = model.transcribe(fix_path(audio_path), language="pt", word_timestamps=True)
+    model = WhisperModel("small", device="cpu", compute_type="int8")
+    segments, info = model.transcribe(fix_path(audio_path), language="pt", word_timestamps=True)
 
     # Coletar todas as palavras com seus respectivos tempos
     all_words = []
-    for seg in result["segments"]:
-        if "words" in seg and seg["words"]:
-            all_words.extend(seg["words"])
+    for seg in segments:
+        if seg.words:
+            for w in seg.words:
+                all_words.append({
+                    "word": w.word,
+                    "start": w.start,
+                    "end": w.end
+                })
         else:
-            # Fallback seguro caso 'words' não venha em algum segmento
-            text_words = seg["text"].strip().split()
+            text_words = seg.text.strip().split()
             if text_words:
-                dt = (seg["end"] - seg["start"]) / len(text_words)
+                dt = (seg.end - seg.start) / len(text_words)
                 for j, w in enumerate(text_words):
                     all_words.append({
                         "word": w,
-                        "start": seg["start"] + j * dt,
-                        "end": seg["start"] + (j + 1) * dt
+                        "start": seg.start + j * dt,
+                        "end": seg.start + (j + 1) * dt
                     })
 
     # Agrupar palavras em blocos curtos (max 6 palavras ou max 32 caracteres)
