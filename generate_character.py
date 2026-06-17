@@ -260,8 +260,13 @@ def main():
             print("❌ Use --next, --topic <id> ou --from-script <arquivo>")
             sys.exit(1)
 
-        openai_key = os.environ.get("OPENAI_API_KEY")
-        gemini_key = os.environ.get("GEMINI_API_KEY")
+        openai_key = os.environ.get("OPENAI_API_KEY", "").strip().strip('"').strip("'")
+        gemini_key = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("'")
+        if not openai_key:
+            openai_key = None
+        if not gemini_key:
+            gemini_key = None
+            
         if not openai_key and not gemini_key:
             print("❌ Nenhuma chave de API (OPENAI_API_KEY ou GEMINI_API_KEY) configurada.")
             sys.exit(1)
@@ -287,8 +292,15 @@ def main():
             print(f"   python generate_character.py -c {args.character} --from-script {json_path}")
         return
 
-    fal_key = os.environ.get("FAL_KEY")
-    elevenlabs_key = os.environ.get("ELEVENLABS_API_KEY")
+    raw_fal_key = os.environ.get("FAL_KEY", "")
+    fal_key = raw_fal_key.strip().strip('"').strip("'")
+    
+    raw_eleven = os.environ.get("ELEVENLABS_API_KEY", "")
+    elevenlabs_key = raw_eleven.strip().strip('"').strip("'")
+
+    print(f"[DEBUG] FAL_KEY original len: {len(raw_fal_key)}, cleaned len: {len(fal_key)}")
+    if len(fal_key) > 8:
+        print(f"[DEBUG] FAL_KEY masked: {fal_key[:4]}...{fal_key[-4:]}")
 
     if not fal_key or not elevenlabs_key:
         print("❌ FAL_KEY e ELEVENLABS_API_KEY necessários para gerar vídeo.")
