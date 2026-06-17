@@ -1,0 +1,66 @@
+Escreva um roteiro de {duration} segundos para a Tâmara Cavalcante.
+
+TEMA: {topic_title}
+PILAR: {topic_pillar}
+HOOK SUGERIDO: {topic_hook}
+ÂNGULO EDITORIAL: {topic_angle}
+CTA DESTE VÍDEO: {cta}
+
+CHECKLIST ANTES DE ESCREVER:
+- O hook é uma observação elegante que ressoa (nunca grito, nunca urgência)?
+- Existe uma cena concreta da rotina doméstica (não abstrata)?
+- Tem um insight ou método apresentado com leveza?
+- Evita julgamento sobre a casa da cliente?
+- Reforça a ideia de "casa pronta para ser vivida"?
+- Todas as audio tags estão nos lugares certos?
+- O fechamento é EXATAMENTE: "{sign_off}"?
+- Usa "closet" (nunca "armário"), "cristaleira" (nunca "louceiro"), "caos"/"desordem" (nunca "bagunça")?
+- Parece uma profissional real falando, não um texto de IA?
+
+Retorne EXATAMENTE este JSON:
+{{
+  "title": "título interno de 2-4 palavras",
+  "duration_seconds": {duration},
+  "hook_text": "2-3 palavras para overlay no vídeo (sem pontuação)",
+  "segments": [
+    {{
+      "type": "hook",
+      "start": 0,
+      "end": 5,
+      "narration": "[serious] uma observação elegante que ancora — sem introdução, sem olá",
+      "visual": "actor_talking",
+      "broll_prompt": null,
+      "subtitle_text": "frase curta da legenda"
+    }},
+    {{
+      "type": "problem",
+      "start": 5,
+      "end": 15,
+      "narration": "[soft] cena concreta da rotina — mostra a dor do dia a dia sem julgar, com delicadeza",
+      "visual": "broll",
+      "broll_prompt": "cinematic scene: elegant home interior, soft natural light, organized luxury space — editorial aesthetic, warm tones, not dramatic",
+      "subtitle_text": "frase curta"
+    }},
+    {{
+      "type": "solution",
+      "start": 15,
+      "end": 35,
+      "narration": "[calm] insight do método — como a organização resolve aquela cena concreta. Use linguagem sofisticada e simples. Mostre o caminho com leveza, nunca corrija. Fale como quem já viu essa cena centenas de vezes e sabe exatamente o que fazer.",
+      "visual": "actor_talking",
+      "broll_prompt": null,
+      "subtitle_text": "frase curta"
+    }},
+    {{
+      "type": "virada",
+      "start": 35,
+      "end": {duration},
+      "narration": "[pensive] virada emocional — conecta a organização com a sensação de leveza, de casa funcionando. Reforce 'casa pronta para ser vivida'. [warm] {sign_off}",
+      "visual": "broll",
+      "broll_prompt": "cinematic scene: beautifully organized closet or kitchen, golden hour light, cream and gold tones — luxury editorial aesthetic, serene and warm",
+      "subtitle_text": "frase curta"
+    }}
+  ],
+  "full_narration": "toda a narração unida em sequência com audio tags",
+  "caption": "1 frase elegante sobre o tema + CTA suave + hashtags. Use quebras de linha reais entre as partes. CTA: 'Quer transformar o seu espaço? Chama no direct.' ou 'Salve para quando precisar.' Termine com: #tamaraorganiza #personalorganizer #organizacaoresidencial #mudancadealtopadrao #organizacaoinvisivel",
+  "hashtags": ["#tamaraorganiza", "#personalorganizer", "#organizacaoresidencial", "#mudancadealtopadrao", "#organizacaoinvisivel"]
+}}
