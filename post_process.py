@@ -42,9 +42,48 @@ def get_video_dimensions(video_path):
 
 def gerar_srt(audio_path, srt_path):
     import whisper
-    print("[1/5] Transcrevendo audio...")
+    print("[1/5] Transcrevendo audio com word-level timestamps...")
     model = whisper.load_model("small")
-    result = model.transcribe(fix_path(audio_path), language="pt")
+    result = model.transcribe(fix_path(audio_path), language="pt", word_timestamps=True)
+
+    # Coletar todas as palavras com seus respectivos tempos
+    all_words = []
+    for seg in result["segments"]:
+        if "words" in seg and seg["words"]:
+            all_words.extend(seg["words"])
+        else:
+            # Fallback seguro caso 'words' não venha em algum segmento
+            text_words = seg["text"].strip().split()
+            if text_words:
+                dt = (seg["end"] - seg["start"]) / len(text_words)
+                for j, w in enumerate(text_words):
+                    all_words.append({
+                        "word": w,
+                        "start": seg["start"] + j * dt,
+                        "end": seg["start"] + (j + 1) * dt
+                    })
+
+    # Agrupar palavras em blocos curtos (max 6 palavras ou max 32 caracteres)
+    groups = []
+    current_group = []
+    current_length = 0
+
+    for w in all_words:
+        word_text = w["word"].strip()
+        if not word_text:
+            continue
+        
+        # Fecha o grupo anterior se exceder o limite de palavras ou caracteres
+        if current_group and (len(current_group) >= 6 or current_length + len(word_text) + 1 > 32):
+            groups.append(current_group)
+            current_group = []
+            current_length = 0
+            
+        current_group.append(w)
+        current_length += len(word_text) + (1 if current_length > 0 else 0)
+
+    if current_group:
+        groups.append(current_group)
 
     def fmt(t):
         h = int(t // 3600)
@@ -53,15 +92,19 @@ def gerar_srt(audio_path, srt_path):
         ms = int((t - int(t)) * 1000)
         return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
+    # Gravar o arquivo SRT formatado com os novos blocos
     with open(srt_path, "w", encoding="utf-8") as f:
-        for i, seg in enumerate(result["segments"], 1):
-            f.write(f"{i}\n{fmt(seg['start'])} --> {fmt(seg['end'])}\n{seg['text'].strip()}\n\n")
-    print(f"    OK SRT: {srt_path}")
+        for i, grp in enumerate(groups, 1):
+            text_str = " ".join(w["word"].strip() for w in grp)
+            start_t = grp[0]["start"]
+            end_t = grp[-1]["end"]
+            f.write(f"{i}\n{fmt(start_t)} --> {fmt(end_t)}\n{text_str}\n\n")
+
+    print(f"    OK SRT: {srt_path} ({len(groups)} blocos curtos)")
 
 
 def gerar_video_legendado(video_path, srt_path, hook_text, output_path):
-    print("[2/5] Adicionando legendas e hook...")
-    hook_clean = hook_text
+    print("[2/5] Adicionando legendas...")
 
     import shutil
     srt_temp = "legendas_temp.srt"
@@ -69,35 +112,17 @@ def gerar_video_legendado(video_path, srt_path, hook_text, output_path):
 
     subtitle_style = (
         "FontName=Arial,"
-        "FontSize=8,"
-        "PrimaryColour=&H00FFFFFF,"
-        "OutlineColour=&H00000000,"
+        "FontSize=12,"
+        "PrimaryColour=&H001A1A1A,"
+        "OutlineColour=&H33FFFFFF,"
         "BorderStyle=3,"
         "Outline=3,"
+        "Shadow=0,"
         "Alignment=2,"
-        "MarginV=40"
+        "MarginV=60"
     )
 
-    linhas = textwrap.wrap(hook_clean, width=25)
-    hook_filters = []
-    for i, linha in enumerate(linhas):
-        linha_esc = linha.replace("'", "\\'").replace(":", "\\:")
-        y = 50 + (i * 70)
-        hook_filters.append(
-            f"drawtext=text='{linha_esc}'"
-            f":fontcolor=white"
-            f":fontsize=40"
-            f":box=1"
-            f":boxcolor=black@0.5"
-            f":boxborderw=10"
-            f":x=(w-text_w)/2"
-            f":y={y}"
-            f":enable='between(t,0,4)'"
-            f":fontfile=C\\\\:/Windows/Fonts/arial.ttf"
-            f":borderw=2"
-        )
-
-    vf = f"subtitles={srt_temp}:force_style='{subtitle_style}'," + ",".join(hook_filters)
+    vf = f"subtitles={srt_temp}:fontsdir=C\\\\:/Windows/Fonts:force_style='{subtitle_style}'"
     cmd = ["ffmpeg", "-y", "-i", fix_path(video_path), "-vf", vf, "-c:a", "copy", fix_path(output_path)]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:

@@ -2279,13 +2279,34 @@ class UgcGenerateRequest(BaseModel):
 def run_ugc_generation_background(job_id: str, product: UgcProductData, webhook_url: str, char_name: str = "Gi - Organize e Poupe"):
     import httpx
     import subprocess
+    import traceback
+    import time
+    import yaml
+    import os
     from pathlib import Path
     
+    logs_dir = Path("output") / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    log_path = logs_dir / f"{job_id}_pipeline.log"
+    
+    def log(msg):
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[{timestamp}] {msg}")
+        with open(log_path, "a", encoding="utf-8") as lf:
+            lf.write(f"[{timestamp}] {msg}\n")
+            
+    log(f"=== Starting Background UGC Job {job_id} ===")
+    log(f"Character: {char_name}")
+    log(f"Product: {product.dict() if hasattr(product, 'dict') else str(product)}")
+    log(f"Webhook URL: {webhook_url}")
+    
+    if "localhost" in webhook_url or "127.0.0.1" in webhook_url:
+        log("⚠️ WARNING: Webhook URL contains 'localhost' or '127.0.0.1'. "
+            "If character-engine runs in the cloud (Railway), it will NOT be able to deliver webhook notifications to this URL!")
+
     char_dir = Path("characters") / char_name
     topics_path = char_dir / "topics.yaml"
-    
-    print(f"[UGC API] Starting background pipeline for Job {job_id} using character {char_name}")
-    
+
     # 1. Append topic to topics.yaml
     try:
         escape_title = product.name.replace('"', '\\"').replace('\n', ' ').strip()
@@ -2318,6 +2339,7 @@ def run_ugc_generation_background(job_id: str, product: UgcProductData, webhook_
     cta: "{escape_cta}"
     status: "pending"
 """
+        log(f"Writing topic entry to {topics_path}: {topic_entry}")
         
         with open(topics_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -2329,22 +2351,30 @@ def run_ugc_generation_background(job_id: str, product: UgcProductData, webhook_
             
         with open(topics_path, "w", encoding="utf-8") as f:
             f.write(new_content)
+        log("Successfully appended topic entry.")
             
     except Exception as e:
-        print(f"[UGC API] Error appending topic: {e}")
+        error_msg = f"Error appending topic: {e}\n{traceback.format_exc()}"
+        log(f"❌ {error_msg}")
+        with open(logs_dir / f"error_{job_id}.txt", "w", encoding="utf-8") as ef:
+            ef.write(error_msg)
         try:
             httpx.post(webhook_url, json={"id": job_id, "status": "failed", "error": f"Failed to register topic: {str(e)}"}, timeout=30.0)
         except Exception as webhook_err:
-            print(f"[UGC API] Webhook alert failed: {webhook_err}")
+            log(f"❌ Webhook alert failed: {webhook_err}")
         return
 
     # 2. Run generate_character.py
     try:
         cmd_gen = ["python", "generate_character.py", "-c", char_name, "--topic", job_id]
-        print(f"[UGC API] Running: {' '.join(cmd_gen)}")
+        log(f"Running command: {' '.join(cmd_gen)}")
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
+        
         res_gen = subprocess.run(cmd_gen, capture_output=True, text=True, env=env)
+        log(f"generate_character exit code: {res_gen.returncode}")
+        log(f"generate_character stdout:\n{res_gen.stdout}")
+        log(f"generate_character stderr:\n{res_gen.stderr}")
         
         if res_gen.returncode != 0:
             raise Exception(f"generate_character failed: {res_gen.stderr or res_gen.stdout}")
@@ -2359,7 +2389,6 @@ def run_ugc_generation_background(job_id: str, product: UgcProductData, webhook_
         # Resolve hook dynamically
         hook_text = "olha o que eu achei!"
         try:
-            import yaml
             if topics_path.exists():
                 with open(topics_path, "r", encoding="utf-8") as f:
                     topics_data = yaml.safe_load(f) or {}
@@ -2368,7 +2397,7 @@ def run_ugc_generation_background(job_id: str, product: UgcProductData, webhook_
                 if matching_topic and matching_topic.get("hook"):
                     hook_text = matching_topic.get("hook")
         except Exception as e:
-            print(f"[UGC API] Error reading hook: {e}")
+            log(f"Error reading hook: {e}")
             
         cmd_post = [
             "python", "post_process.py",
@@ -2379,16 +2408,21 @@ def run_ugc_generation_background(job_id: str, product: UgcProductData, webhook_
             str(caption_path).replace("\\", "/")
         ]
         
-        print(f"[UGC API] Running: {' '.join(cmd_post)}")
+        log(f"Running post_process command: {' '.join(cmd_post)}")
         env_post = env.copy()
         env_post["UPLOAD_POST_KEY"] = ""
+        
         res_post = subprocess.run(cmd_post, capture_output=True, text=True, env=env_post)
+        log(f"post_process exit code: {res_post.returncode}")
+        log(f"post_process stdout:\n{res_post.stdout}")
+        log(f"post_process stderr:\n{res_post.stderr}")
         
         if res_post.returncode != 0:
             raise Exception(f"post_process failed: {res_post.stderr or res_post.stdout}")
             
         # 4. Check generated files
         final_video_path = final_output_dir / f"{job_id}_final_pub.mp4"
+        log(f"Checking if final video exists: {final_video_path}")
         
         if not final_video_path.exists():
             raise Exception("Final video file was not generated.")
@@ -2410,7 +2444,7 @@ def run_ugc_generation_background(job_id: str, product: UgcProductData, webhook_
         thumbnail_url = f"{base_url}/videos/{quoted_char}/final/{job_id}_thumb.jpg"
         
         # 5. Send completion Webhook
-        print(f"[UGC API] Generation completed successfully! Calling Webhook: {webhook_url}")
+        log(f"Generation completed successfully! Calling Webhook: {webhook_url}")
         webhook_payload = {
             "id": job_id,
             "status": "completed",
@@ -2418,15 +2452,36 @@ def run_ugc_generation_background(job_id: str, product: UgcProductData, webhook_
             "thumbnail_url": thumbnail_url,
             "caption": caption
         }
+        log(f"Webhook payload: {webhook_payload}")
         
-        httpx.post(webhook_url, json=webhook_payload, timeout=30.0)
+        try:
+            webhook_res = httpx.post(webhook_url, json=webhook_payload, timeout=30.0)
+            log(f"Webhook response status: {webhook_res.status_code}, body: {webhook_res.text}")
+        except Exception as webhook_err:
+            log(f"❌ Webhook call failed: {webhook_err}")
+            raise webhook_err
         
     except Exception as e:
-        print(f"[UGC API] Error in generation pipeline: {e}")
+        error_msg = f"Error in generation pipeline: {e}\n{traceback.format_exc()}"
+        log(f"❌ {error_msg}")
+        with open(logs_dir / f"error_{job_id}.txt", "w", encoding="utf-8") as ef:
+            ef.write(error_msg)
         try:
-            httpx.post(webhook_url, json={"id": job_id, "status": "failed", "error": str(e)}, timeout=30.0)
+            webhook_payload = {"id": job_id, "status": "failed", "error": str(e)}
+            log(f"Calling failure webhook to {webhook_url} with payload: {webhook_payload}")
+            webhook_res = httpx.post(webhook_url, json=webhook_payload, timeout=30.0)
+            log(f"Failure Webhook response status: {webhook_res.status_code}, body: {webhook_res.text}")
         except Exception as webhook_err:
-            print(f"[UGC API] Webhook alert failed: {webhook_err}")
+            log(f"❌ Webhook alert failed: {webhook_err}")
+    finally:
+        try:
+            import glob
+            all_files = glob.glob("output/**/*", recursive=True)
+            with open(logs_dir / "files.txt", "w", encoding="utf-8") as f_list:
+                f_list.write("\n".join(all_files))
+            log("Listed all files in output/logs/files.txt")
+        except Exception as list_err:
+            log(f"Failed listing output files: {list_err}")
 
 
 @app.post("/api/character/generate-ugc")
