@@ -1,0 +1,70 @@
+topics:
+  - id: primeira_noite
+    title: "A primeira noite na casa nova"
+    pillar: mudanca_pronta
+    hook: "Na mudança, a primeira caixa a abrir não é a mais cheia."
+    angle: "O essencial da primeira noite — cama, banho, remédios, carregadores — define o acolhimento da casa nova."
+    status: pending
+
+  - id: casa_bonita_nao_funciona
+    title: "Casa linda que não funciona"
+    pillar: casa_bonita_funcional
+    hook: "Às vezes a casa está linda, mas no primeiro café da manhã a rotina ainda não encontrou lugar."
+    angle: "A diferença entre uma casa bonita e uma casa pronta para ser vivida."
+    status: pending
+
+  - id: closet_da_manha
+    title: "O closet da manhã"
+    pillar: closets_rotina
+    hook: "Um closet pode estar lindo e ainda assim não funcionar."
+    angle: "O closet precisa acompanhar a manhã da cliente, não só a estética do ambiente."
+    status: pending
+
+  - id: cozinha_vitrine
+    title: "Cozinha não é vitrine"
+    pillar: cozinha_fluxo
+    hook: "Cozinha de alto padrão não pode funcionar como vitrine."
+    angle: "Organizar pela frequência de uso e pelo movimento real da casa."
+    status: pending
+
+  - id: cristaleira_uso_real
+    title: "A cristaleira com uso real"
+    pillar: cozinha_fluxo
+    hook: "A cristaleira não deveria ser pensada só pela beleza."
+    angle: "Respeitar beleza, frequência de uso e a forma como a casa recebe."
+    status: pending
+
+  - id: mudanca_antes_do_caminhao
+    title: "Mudança começa antes do caminhão"
+    pillar: mudanca_pronta
+    hook: "Uma mudança bem feita não começa no caminhão."
+    angle: "As decisões das semanas anteriores definem se a casa nova funciona desde o primeiro dia."
+    status: pending
+
+  - id: organizacao_invisivel
+    title: "A organização invisível"
+    pillar: bastidores_metodo
+    hook: "A melhor organização é quase invisível."
+    angle: "O luxo silencioso é não precisar pensar onde as coisas estão."
+    status: pending
+
+  - id: arquitetura_mais_organizacao
+    title: "Arquitetura + organização"
+    pillar: casa_bonita_funcional
+    hook: "A arquitetura desenha a casa. A organização prepara a casa para a rotina."
+    angle: "A organização complementa o projeto — não concorre com arquitetas e designers."
+    status: pending
+
+  - id: falta_metodo_nao_espaco
+    title: "Nem sempre falta espaço"
+    pillar: bastidores_metodo
+    hook: "Muitas vezes a cliente acha que falta espaço."
+    angle: "Na prática, falta método — mostrado com delicadeza, nunca como correção."
+    status: pending
+
+  - id: lavanderia_esquecida
+    title: "A lavanderia esquecida"
+    pillar: casa_bonita_funcional
+    hook: "Muitas casas bonitas esquecem a lavanderia."
+    angle: "Uma lavanderia bem pensada quase não aparece, mas muda a fluidez da casa inteira."
+    status: pending
