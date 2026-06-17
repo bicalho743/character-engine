@@ -1,6 +1,7 @@
 """
 post_process.py — Legendas + Hook + Thumbnail + Publicacao
-Uso: python post_process.py <video> <audio> <hook_text> <output_dir> [caption_file]
+Uso: python post_process.py -c <character_id> <video> <audio> <hook_text> <output_dir> [caption_file]
+     python post_process.py <video> <audio> <hook_text> <output_dir> [caption_file]  (fallback: padre_miguel)
 """
 import sys
 import os
@@ -10,6 +11,26 @@ import unicodedata
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# ── Perfis de publicação por personagem ──────────────────────────────────────
+CHARACTER_PROFILES = {
+    "padre_miguel": {
+        "perfis": ["Conselhosdopadremiguel"],
+        "first_comment": "#padre #catholiclife #catolico #fecatolica #reflexao #palavradedeus #religiao #espiritualidade",
+        "fallback_caption_cta": "Se isso tocou voce, manda para alguem que precisa ouvir hoje. 🙏",
+        "fallback_hashtags": "#padremiguel #fe #espiritualidade #catolicismo #ansiedade",
+        "youtube_tags": "padre miguel,fe,espiritualidade,catolicismo,acolhimento,oracao,ansiedade,esperanca,padre,reflexao",
+    },
+    "tamara": {
+        "perfis": ["tamaraorganiza"],
+        "first_comment": "#personalorganizer #organizacaoresidencial #mudancadealtopadrao #organizacaoinvisivel #closet #casaprontaparaservivida",
+        "fallback_caption_cta": "Quer transformar o seu espaço? Chama no direct.",
+        "fallback_hashtags": "#tamaraorganiza #personalorganizer #organizacaoresidencial #mudancadealtopadrao #organizacaoinvisivel",
+        "youtube_tags": "tamara cavalcante,personal organizer,organizacao,mudanca,alto padrao,closet,casa organizada,rotina leve",
+    },
+}
+DEFAULT_CHARACTER = "padre_miguel"
+
 
 
 def remove_acentos(texto):
@@ -226,7 +247,7 @@ def upload_thumbnail_fal(thumbnail_path, fal_key):
     return asyncio.run(run())
 
 
-def publicar_video(video_path, thumbnail_url, titulo, caption, upload_post_key, perfis, scheduled_date=None):
+def publicar_video(video_path, thumbnail_url, titulo, caption, upload_post_key, perfis, first_comment="", youtube_tags="", scheduled_date=None):
     print("[5/5] Publicando nas redes...")
     import httpx
 
@@ -243,7 +264,7 @@ def publicar_video(video_path, thumbnail_url, titulo, caption, upload_post_key, 
             "title": caption,
             "description": caption,
             "platform[]": ["instagram", "tiktok", "youtube", "x"],
-            "first_comment": "#padre #catholiclife #catolico #fecatolica #reflexao #palavradedeus #religiao #espiritualidade",
+            "first_comment": first_comment,
             # Instagram Specifics
             "media_type": "REELS",
             "share_to_feed": "true",
@@ -253,7 +274,7 @@ def publicar_video(video_path, thumbnail_url, titulo, caption, upload_post_key, 
             # YouTube Specifics
             "youtube_title": titulo,
             "youtube_description": caption,
-            "youtube_tags": "padre miguel,fe,espiritualidade,catolicismo,acolhimento,oracao,ansiedade,esperanca,padre,reflexao",
+            "youtube_tags": youtube_tags,
             "youtube_category_id": "29",
             "youtube_privacy_status": "public",
             "privacyStatus": "public",
@@ -282,15 +303,40 @@ def publicar_video(video_path, thumbnail_url, titulo, caption, upload_post_key, 
 
 
 def main():
-    if len(sys.argv) < 5:
-        print("Uso: python post_process.py <video.mp4> <audio.mp3> <hook_text> <output_dir> [caption_file]")
+    # Parse -c <character> flag
+    args = sys.argv[1:]
+    character_id = DEFAULT_CHARACTER
+
+    if "-c" in args:
+        idx = args.index("-c")
+        if idx + 1 < len(args):
+            character_id = args[idx + 1]
+            args = args[:idx] + args[idx + 2:]  # remove -c and value
+        else:
+            print("Erro: -c requer o ID do personagem (ex: -c tamara)")
+            sys.exit(1)
+
+    if len(args) < 4:
+        print("Uso: python post_process.py [-c <character>] <video.mp4> <audio.mp3> <hook_text> <output_dir> [caption_file] [scheduled_date]")
+        print(f"Personagens disponíveis: {', '.join(CHARACTER_PROFILES.keys())}")
         sys.exit(1)
 
-    video_path = sys.argv[1]
-    audio_path = sys.argv[2]
-    hook_text = sys.argv[3]
-    output_dir = sys.argv[4]
-    caption_file = sys.argv[5] if len(sys.argv) > 5 else None
+    video_path = args[0]
+    audio_path = args[1]
+    hook_text = args[2]
+    output_dir = args[3]
+    caption_file = args[4] if len(args) > 4 else None
+    scheduled = args[5] if len(args) > 5 else None
+
+    # Resolve character profile
+    profile = CHARACTER_PROFILES.get(character_id)
+    if not profile:
+        print(f"⚠️  Personagem '{character_id}' não tem perfil de publicação configurado.")
+        print(f"   Disponíveis: {', '.join(CHARACTER_PROFILES.keys())}")
+        print(f"   Continuando sem publicação...")
+        profile = None
+
+    print(f"\n🎬 Pós-processamento: {character_id}")
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -305,11 +351,14 @@ def main():
             caption = f.read().strip()
         print(f"Caption carregada: {caption[:80]}...")
     else:
-        caption = (
-            hook_text +
-            "\n\nSe isso tocou voce, manda para alguem que precisa ouvir hoje. 🙏"
-            "\n\n#padremiguel #fe #espiritualidade #catolicismo #ansiedade"
-        )
+        if profile:
+            caption = (
+                hook_text +
+                f"\n\n{profile['fallback_caption_cta']}"
+                f"\n\n{profile['fallback_hashtags']}"
+            )
+        else:
+            caption = hook_text
 
     gerar_srt(audio_path, srt_path)
     gerar_video_legendado(video_path, srt_path, hook_text, video_legendado)
@@ -320,7 +369,7 @@ def main():
     upload_key = os.environ.get("UPLOAD_POST_KEY", "")
     fal_key = os.environ.get("FAL_KEY", "")
 
-    if upload_key:
+    if upload_key and profile:
         thumbnail_url = None
         if fal_key:
             print("    Fazendo upload do thumbnail para fal.ai...")
@@ -330,12 +379,19 @@ def main():
             except Exception as e:
                 print(f"    Aviso: falha no upload do thumbnail: {e}")
 
-        perfis = ["Conselhosdopadremiguel"]
+        perfis = profile["perfis"]
         titulo = remove_acentos(hook_text)
-        scheduled = sys.argv[6] if len(sys.argv) > 6 else None
-        publicar_video(video_final, thumbnail_url, titulo, caption, upload_key, perfis, scheduled)
+        publicar_video(
+            video_final, thumbnail_url, titulo, caption, upload_key, perfis,
+            first_comment=profile.get("first_comment", ""),
+            youtube_tags=profile.get("youtube_tags", ""),
+            scheduled_date=scheduled
+        )
     else:
-        print("UPLOAD_POST_KEY nao configurado — pulando publicacao.")
+        if not upload_key:
+            print("UPLOAD_POST_KEY nao configurado — pulando publicacao.")
+        elif not profile:
+            print(f"Sem perfil de publicação para '{character_id}' — pulando publicacao.")
 
     print(f"\nPronto!")
     print(f"   Video final: {video_final}")
