@@ -14,22 +14,22 @@ voice:
     use_speaker_boost: true
 
 avatar:
-  path: "characters/tamara/avatar/base.png"
+  path: "characters/tamara/avatar/base.jpg"
   angles:
-    default: "characters/tamara/avatar/base.png"
+    default: "characters/tamara/avatar/base.jpg"
     closeup: "characters/tamara/avatar/closeup.png"
-    entre_caixas: "characters/tamara/avatar/tamara_entre_caixas.png"
-    closet: "characters/tamara/avatar/tamara_closet.png"
-    cozinha: "characters/tamara/avatar/tamara_cozinha.png"
-    cristaleira: "characters/tamara/avatar/tamara_cristaleira.png"
-    ambiente_organizado: "characters/tamara/avatar/tamara_ambiente_organizado.png"
+    entre_caixas: "characters/tamara/avatar/sentadaentrecaixas.jpg"
+    poltrona: "characters/tamara/avatar/sentadapoltrona.jpg"
+    sala: "characters/tamara/avatar/EMpésala.jpg"
+    banheiro: "characters/tamara/avatar/empebanheiro.jpg"
+    computador: "characters/tamara/avatar/sentadacomputador.jpg"
   pillar_angles:
-    mudanca_pronta: "characters/tamara/avatar/tamara_entre_caixas.png"
-    casa_bonita_funcional: "characters/tamara/avatar/tamara_ambiente_organizado.png"
-    closets_rotina: "characters/tamara/avatar/tamara_closet.png"
-    cozinha_fluxo: "characters/tamara/avatar/tamara_cozinha.png"
-    bastidores_metodo: "characters/tamara/avatar/base.png"
-    apresentacao: "characters/tamara/avatar/base.png"
+    mudanca_pronta: "characters/tamara/avatar/sentadaentrecaixas.jpg"
+    casa_bonita_funcional: "characters/tamara/avatar/EMpésala.jpg"
+    closets_rotina: "characters/tamara/avatar/sentadapoltrona.jpg"
+    cozinha_fluxo: "characters/tamara/avatar/empebanheiro.jpg"
+    bastidores_metodo: "characters/tamara/avatar/sentadacomputador.jpg"
+    apresentacao: "characters/tamara/avatar/base.jpg"
 
 video:
   mode: premium
