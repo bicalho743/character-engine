@@ -1,0 +1,68 @@
+id: frei_miguel_lucero
+name: Frei Miguel Lucero
+language: pt-BR
+active: true
+
+voice:
+  provider: elevenlabs
+  voice_id: "OKD1hkwyzB8jG0VxOVMq"   # Voz Frei Martin lucero
+  model: eleven_multilingual_v2
+  settings:
+    stability: 0.50
+    similarity_boost: 0.80
+    style: 0.40
+    use_speaker_boost: true
+
+avatar:
+  path: "characters/frei_miguel_lucero/avatar/base.png"
+  angles:
+    default: "characters/frei_miguel_lucero/avatar/base.png"
+    closeup: "characters/frei_miguel_lucero/avatar/closeup.png"
+    bosque_amanhecer: "characters/frei_miguel_lucero/avatar/monge_anoitecer.png"
+    capela_pedra: "characters/frei_miguel_lucero/avatar/monge_jardim.png"
+    estrada_terra: "characters/frei_miguel_lucero/avatar/monge_estrada.png"
+    mosteiro_claustro: "characters/frei_miguel_lucero/avatar/lateral_contemplacao.png"
+    montanha_amanhecer: "characters/frei_miguel_lucero/avatar/paz_entardecer.png"
+    banco_jardim_terco: "characters/frei_miguel_lucero/avatar/homem_jardim.png"
+    lendo_biblia: "characters/frei_miguel_lucero/avatar/base.png"
+  pillar_angles:
+    sinais_de_deus: "characters/frei_miguel_lucero/avatar/monge_anoitecer.png"
+    guerra_interior: "characters/frei_miguel_lucero/avatar/monge_estrada.png"
+    oracoes_poderosas: "characters/frei_miguel_lucero/avatar/monge_jardim.png"
+    sabedoria_franciscana: "characters/frei_miguel_lucero/avatar/lateral_contemplacao.png"
+    mensagens_sofrimento: "characters/frei_miguel_lucero/avatar/homem_jardim.png"
+    apresentacao: "characters/frei_miguel_lucero/avatar/base.png"
+
+video:
+  mode: premium
+  duration_target: 120   # ponto-doce do nicho ~2min; faixa 90-150s (dor ~90s, oração guiada ~150s)
+  aspect_ratio: "9:16"
+
+publishing:
+  platforms:
+    - instagram_reels
+    - tiktok
+    - youtube_shorts
+  schedule: "06:00,12:00,19:00"
+  hashtags:
+    - "#freimiguellucero"
+    - "#fe"
+    - "#espiritualidade"
+    - "#saofrancisco"
+    - "#franciscano"
+    - "#ansiedade"
+    - "#paz"
+    - "#oracao"
+    - "#deus"
+    - "#despertarespiritual"
+
+script:
+  model: gpt-4o-mini
+  max_tokens: 1000
+  sign_off: "Que Deus ilumine o seu caminho. Paz e bem."
+  content_pillars:
+    - sinais_de_deus
+    - guerra_interior
+    - oracoes_poderosas
+    - sabedoria_franciscana
+    - mensagens_sofrimento

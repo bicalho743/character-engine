@@ -110,7 +110,7 @@ def save_script(script: dict, topic: dict, output_dir: Path) -> tuple:
     return json_path, txt_path, caption_path
 
 
-def generate_voiceover(text: str, voice_id: str, elevenlabs_key: str, output_path: str):
+def generate_voiceover(text: str, voice_id: str, elevenlabs_key: str, output_path: str, voice_settings: dict = None):
     import httpx
     import re
     if os.path.exists(output_path):
@@ -121,6 +121,18 @@ def generate_voiceover(text: str, voice_id: str, elevenlabs_key: str, output_pat
     text = re.sub(r'\[(serious|soft|calm|pensive|warm)\]', '', text).strip()
     text = re.sub(r'\s+', ' ', text)
 
+    # Configurações padrão
+    settings = {
+        "stability": 0.55,
+        "similarity_boost": 0.80,
+        "style": 0.30,
+        "use_speaker_boost": True,
+    }
+    if voice_settings:
+        for k, v in voice_settings.items():
+            if v is not None:
+                settings[k] = v
+
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     headers = {
         "xi-api-key": elevenlabs_key,
@@ -129,12 +141,7 @@ def generate_voiceover(text: str, voice_id: str, elevenlabs_key: str, output_pat
     body = {
         "text": text,
         "model_id": "eleven_multilingual_v2",
-        "voice_settings": {
-            "stability": 0.55,
-            "similarity_boost": 0.80,
-            "style": 0.30,
-            "use_speaker_boost": True,
-        },
+        "voice_settings": settings,
     }
     with httpx.Client(timeout=60.0) as client:
         resp = client.post(url, headers=headers, json=body)
@@ -326,11 +333,20 @@ def main():
     print(f"    Ângulo: {Path(avatar_path).name} (pilar: {pillar})")
 
     full_narration = script.get("full_narration", "")
-    voice_id = char_config["voice"]["voice_id"]
+    voice_config = char_config.get("voice", {})
+    voice_id = voice_config.get("voice_id")
+    voice_settings = voice_config.get("settings", {})
 
     print(f"\n[1/4] Tema: {topic['title']}")
-    generate_voiceover(full_narration, voice_id, elevenlabs_key, audio_path)
-    generate_kling_avatar(avatar_path, audio_path, fal_key, video_path)
+    generate_voiceover(full_narration, voice_id, elevenlabs_key, audio_path, voice_settings)
+    
+    kling_success = False
+    try:
+        generate_kling_avatar(avatar_path, audio_path, fal_key, video_path)
+        kling_success = True
+    except Exception as e:
+        print(f"\n⚠️  Erro ao gerar vídeo com Kling (fal.ai): {e}")
+        print("    O áudio da narração foi salvo com sucesso, mas o vídeo não pôde ser gerado.")
 
     caption_path = str(output_dir / f"{title_slug}_caption.txt")
     with open(caption_path, "w", encoding="utf-8") as f:
@@ -339,9 +355,14 @@ def main():
     hook_text = script.get("hook_text", topic.get("hook", ""))
 
     print(f"\n{'='*60}")
-    print(f"✅ Vídeo gerado: {video_path}")
-    print(f"\n▶️  Próximo passo — aplicar legendas e publicar:")
-    print(f'   python post_process.py "{video_path}" "{audio_path}" "{hook_text}" "{output_dir}/final" "{caption_path}"')
+    if kling_success:
+        print(f"✅ Vídeo gerado: {video_path}")
+        print(f"\n▶️  Próximo passo — aplicar legendas e publicar:")
+        print(f'   python post_process.py -c {args.character} "{video_path}" "{audio_path}" "{hook_text}" "{output_dir}/final" "{caption_path}"')
+    else:
+        print("❌ Geração de vídeo com Kling falhou. Narração de áudio e caption prontas.")
+        print(f"   Áudio: {audio_path}")
+        print(f"   Legenda/Caption: {caption_path}")
     print(f"{'='*60}")
 
 

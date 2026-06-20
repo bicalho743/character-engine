@@ -1,0 +1,74 @@
+Escreva um roteiro de {duration} segundos para o Frei Miguel Lucero.
+
+TEMA: {topic_title}
+PILAR: {topic_pillar}
+HOOK SUGERIDO: {topic_hook}
+ÂNGULO EDITORIAL: {topic_angle}
+CTA DESTE VÍDEO: {cta}
+
+CHECKLIST ANTES DE ESCREVER:
+- O hook nomeia uma dor real sem introdução, sem "olá", indo direto ao ponto?
+- Existe uma cena cotidiana e simples descrita (não abstrata)?
+- Tem um eco fraterno ou imagem franciscana/natureza simples no corpo do texto?
+- A esperança apresentada é concreta, realista e fraterna (não motivacional de autoajuda)?
+- O gesto final é pequeno, prático e factível para fazer hoje?
+- Usou reticências (...) frequentemente entre trechos de frases e orações para forçar pausas de respiração lentas na locução?
+- Todas as audio tags estão nos locais apropriados ([serious], [soft], [calm], [pensive], [warm])?
+- O fechamento é EXATAMENTE: "{sign_off}"?
+
+Retorne EXATAMENTE este JSON:
+{{
+  "title": "título interno de 2-4 palavras",
+  "duration_seconds": {duration},
+  "hook_text": "2-3 palavras para overlay no vídeo (sem pontuação)",
+  "segments": [
+    {{
+      "type": "hook",
+      "start": 0,
+      "end": 5,
+      "narration": "[serious] uma frase curta que nomeia a dor — sem introdução, sem olá",
+      "visual": "actor_talking",
+      "broll_prompt": null,
+      "subtitle_text": "frase curta da legenda"
+    }},
+    {{
+      "type": "problem",
+      "start": 5,
+      "end": 15,
+      "narration": "[soft] narração que aprofunda a dor com cena cotidiana simples e concreta",
+      "visual": "broll",
+      "broll_prompt": "cinematic scene: person alone looking at a window, soft natural light, quiet moment of reflection — calm and warm, not dramatic",
+      "subtitle_text": "frase curta"
+    }},
+    {{
+      "type": "solution",
+      "start": 15,
+      "end": 35,
+      "narration": "[calm] OBRIGATÓRIO — DUAS PARTES: (1) acolhe a dor com fraternidade e linguagem cotidiana concreta, fala como um frei simples que ouve a dor alheia com paciência; (2) SEMPRE inclua um eco da criação, uma imagem simples da natureza, uma frase de São Francisco ou uma passagem do Evangelho sem citar capítulos/versículos — use: Tem uma passagem no Evangelho em que... / São Francisco dizia que... / Há uma cena em que Jesus... — a mensagem bíblica ou franciscana deve soar como companhia, não como lição de moral ou sermão de teologia. PROIBIDO: termos abstratos, motivacionais, coach.",
+      "visual": "actor_talking",
+      "broll_prompt": null,
+      "subtitle_text": "frase curta"
+    }},
+    {{
+      "type": "virada",
+      "start": 35,
+      "end": 50,
+      "narration": "[pensive] virada fraterna e espiritual CONCRETA — conecta a lição da criação com a vida da pessoa agora + um gesto PEQUENO e simples factível para fazer hoje (ex: Hoje, sente-se por cinco minutos olhando para o céu e descanse). Não é motivação. É companhia fraterna. Use você, não a gente ou nós.",
+      "visual": "broll",
+      "broll_prompt": "cinematic scene: beautiful garden of monastery, morning sun light through green leaves, or simple hands holding a wooden cross — hope and warmth, not dramatic",
+      "subtitle_text": "frase curta"
+    }},
+    {{
+      "type": "cta",
+      "start": 50,
+      "end": {duration},
+      "narration": "[warm] {sign_off}",
+      "visual": "actor_talking",
+      "broll_prompt": null,
+      "subtitle_text": "Paz e Bem"
+    }}
+  ],
+  "full_narration": "toda a narração unida em sequência com audio tags",
+  "caption": "1 frase emocional curta sobre o tema + CTA correto para o pilar + hashtags. Use quebras de linha reais entre as partes. CTA para acolhimento/relacionamentos/culpa: Se isso tocou você, envie para alguém que precisa desse afago hoje. Para fé/esperança: Siga @freimiguellucero para uma dose diária de paz. Termine com: #freimiguellucero #pazebem #fe #espiritualidade #catolicismo #acolhimento",
+  "hashtags": ["#freimiguellucero", "#pazebem", "#fe", "#espiritualidade", "#catolicismo", "#acolhimento"]
+}}

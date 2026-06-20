@@ -1,0 +1,140 @@
+topics:
+  - id: apareceu_pra_voce
+    title: "Se esse vídeo apareceu pra você, não foi por acaso"
+    pillar: sinais_de_deus
+    hook: "Se esse vídeo apareceu pra você agora, escute com atenção. Não foi por acaso."
+    angle: "Transformar a coincidência do feed em um chamado à reflexão."
+    status: pending
+
+  - id: peso_que_nao_e_seu
+    title: "O peso que Deus nunca pediu pra você carregar"
+    pillar: guerra_interior
+    hook: "Existe um peso que você carrega todo dia. E Deus nunca pediu isso de você."
+    angle: "Quem cuida de todos e esquece de si mesmo está se esgotando — soltar é permissão, não falha."
+    status: pending
+
+  - id: oracao_madrugada
+    title: "A oração da madrugada que quase ninguém ensina"
+    pillar: oracoes_poderosas
+    hook: "Existe uma oração para quem acorda de madrugada. Quase ninguém ensina ela."
+    angle: "Oração guiada para a mente que não desliga; CTA comente amém + envie."
+    status: pending
+
+  - id: ignore_quem_te_ignora
+    title: "Ignore quem te ignora (e proteja sua paz)"
+    pillar: guerra_interior
+    hook: "Pare de escrever textos enormes para quem não responde nenhuma linha."
+    angle: "Soltar quem escolheu se afastar não é frieza, é respeito por si mesmo."
+    status: pending
+
+  - id: dor_que_voce_esconde
+    title: "A dor que você esconde de todo mundo, menos de Deus"
+    pillar: mensagens_sofrimento
+    hook: "Tem uma dor que você esconde de todo mundo. Mas não consegue esconder de Deus."
+    angle: "Nomear a ferida silenciosa e oferecer entrega, sem prometer milagre."
+    status: pending
+
+  - id: tres_sinais_mudanca
+    title: "3 sinais de que Deus está mudando a sua vida"
+    pillar: sinais_de_deus
+    hook: "Se esses três sinais estão acontecendo com você, não entre em pânico."
+    angle: "Perdas, portas fechadas e processos sem explicação podem ser direção, não abandono."
+    status: pending
+
+  - id: oracao_antes_dormir
+    title: "Oração antes de dormir para a mente que não desliga"
+    pillar: oracoes_poderosas
+    hook: "Antes de dormir hoje, diga isso a Deus. Pode mudar a forma como você acorda."
+    angle: "Entregar o peso do dia antes do sono; ritmo lento, CTA salvar."
+    status: pending
+
+  - id: salvar_quem_nao_quer
+    title: "Pare de tentar salvar quem não quer ser salvo"
+    pillar: guerra_interior
+    hook: "Deus não pediu pra você salvar todo mundo."
+    angle: "Reconhecer o limite do que se pode carregar pelos outros."
+    status: pending
+
+  - id: sao_francisco_ansiedade
+    title: "O que São Francisco diria sobre a sua ansiedade"
+    pillar: sabedoria_franciscana
+    hook: "São Francisco largou tudo. E descobriu o que quase ninguém descobre."
+    angle: "Simplicidade e desapego como caminho contra a ansiedade do excesso."
+    status: pending
+
+  - id: oracao_decisao
+    title: "Oração para uma decisão difícil"
+    pillar: oracoes_poderosas
+    hook: "Faça esta oração antes de tomar qualquer decisão importante."
+    angle: "Pedir discernimento; fechar portas de engano e abrir as certas."
+    status: pending
+
+  - id: acorda_2_4_madrugada
+    title: "Se você acorda entre 2 e 4 da manhã, ouça isso"
+    pillar: sinais_de_deus
+    hook: "Se você continua acordando entre 2 e 4 da manhã, não ignore isso tão rápido."
+    angle: "A madrugada como convite à oração, não como castigo."
+    status: pending
+
+  - id: tres_lugares_nao_voltar
+    title: "3 lugares (emocionais) onde você nunca deveria voltar"
+    pillar: guerra_interior
+    hook: "Existem três lugares onde você nunca deveria voltar. Entender isso poupa anos de dor."
+    angle: "O lugar da rejeição, da fraqueza e da infelicidade — nem toda porta fechada é perda."
+    status: pending
+
+  - id: recomecar_depois_erro
+    title: "Recomeçar depois de um erro grande"
+    pillar: mensagens_sofrimento
+    hook: "Você fez algo que não esperava ser capaz de fazer."
+    angle: "Não existe ponto de não-retorno com Deus; perdão começa antes da perfeição."
+    status: pending
+
+  - id: oracao_familia
+    title: "Oração que cobre toda a sua família"
+    pillar: oracoes_poderosas
+    hook: "Você conhece a oração que cobre toda a sua família? Pouca gente ensina isso hoje."
+    angle: "Oração de proteção pela casa e pelos filhos; CTA enviar para a família."
+    status: pending
+
+  - id: perigo_comparacao
+    title: "O perigo de se comparar o tempo todo"
+    pillar: guerra_interior
+    hook: "A comparação é o ladrão silencioso da sua paz."
+    angle: "Comparar rouba o presente e a gratidão pelo que já se tem."
+    status: pending
+
+  - id: porta_fechada
+    title: "Quando uma porta se fecha, não tente arrombá-la"
+    pillar: sinais_de_deus
+    hook: "Quando Deus fecha uma porta, não perca a paz tentando arrombá-la."
+    angle: "Separação às vezes é proteção; confiar no que foi encerrado."
+    status: pending
+
+  - id: paz_de_ter_menos
+    title: "A paz de quem aprendeu a ter menos"
+    pillar: sabedoria_franciscana
+    hook: "Quanto mais coisa você tenta segurar, mais cansado você fica."
+    angle: "Desapego franciscano como leveza, não como pobreza."
+    status: pending
+
+  - id: oracao_ansiedade
+    title: "Oração para a ansiedade que aperta o peito"
+    pillar: oracoes_poderosas
+    hook: "Quando a ansiedade apertar, faça esta oração."
+    angle: "Trazer a mente do futuro de volta ao presente, na presença de Deus."
+    status: pending
+
+  - id: quatro_pessoas_perdoar
+    title: "4 pessoas que você precisa perdoar (a 4ª é você)"
+    pillar: mensagens_sofrimento
+    hook: "Existem quatro pessoas que você precisa perdoar hoje. A quarta é a mais difícil."
+    angle: "Pais, quem feriu, quem não te valorizou — e você mesmo."
+    status: pending
+
+  - id: nao_resolver_tudo_hoje
+    title: "Você não precisa resolver tudo hoje"
+    pillar: guerra_interior
+    hook: "Nem tudo que está tirando o seu sono precisa ser resolvido hoje."
+    angle: "Algumas coisas não precisam de solução; precisam de entrega."
+    status: pending

@@ -10,6 +10,13 @@ import textwrap
 import unicodedata
 from dotenv import load_dotenv
 
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 load_dotenv()
 
 # ── Perfis de publicação por personagem ──────────────────────────────────────
@@ -20,6 +27,13 @@ CHARACTER_PROFILES = {
         "fallback_caption_cta": "Se isso tocou voce, manda para alguem que precisa ouvir hoje. 🙏",
         "fallback_hashtags": "#padremiguel #fe #espiritualidade #catolicismo #ansiedade",
         "youtube_tags": "padre miguel,fe,espiritualidade,catolicismo,acolhimento,oracao,ansiedade,esperanca,padre,reflexao",
+    },
+    "frei_miguel_lucero": {
+        "perfis": ["Conselhosdefreimiguellucero"],
+        "first_comment": "#frei #pazebem #franciscano #catolico #fecatolica #reflexao #palavradedeus #espiritualidade #acolhimento",
+        "fallback_caption_cta": "Se isso tocou você, envie para alguém que precisa desse afago hoje. 🙏",
+        "fallback_hashtags": "#freimiguellucero #pazebem #fe #espiritualidade #catolicismo #acolhimento",
+        "youtube_tags": "frei miguel,frei miguel lucero,paz e bem,fe,espiritualidade,catolicismo,acolhimento,oracao,ansiedade,esperanca,reflexao",
     },
     "tamara": {
         "perfis": ["tamaraorganiza"],
@@ -157,7 +171,7 @@ def gerar_video_legendado(video_path, srt_path, hook_text, output_path):
 
 def gerar_thumbnail(video_path, hook_text, output_path):
     print("[3/5] Gerando thumbnail...")
-    hook_clean = hook_text  # já veio sem acentos do main()
+    hook_clean = hook_text.lower()  # Caixa baixa estilo TikTok
 
     total_chars = len(hook_clean)
     if total_chars <= 20:
@@ -174,33 +188,29 @@ def gerar_thumbnail(video_path, hook_text, output_path):
         width = 22
 
     linhas = textwrap.wrap(hook_clean, width=width)
-    _, altura = get_video_dimensions(video_path)
-    espaco = int(fonte * 1.4)
-    y_inicio = int(altura * 0.68)
+    linhas_texto = "\n".join(linhas)
+    # Escapar aspas simples e dois pontos
+    linhas_texto_esc = linhas_texto.replace("'", "'\\\\''").replace(":", "\\:")
 
-    filtros = []
-    for i, linha in enumerate(linhas):
-        linha_esc = linha.replace("'", "\\'").replace(":", "\\:")
-        y = y_inicio + (i * espaco)
-        filtros.append(
-            f"drawtext=text='{linha_esc}'"
-            f":fontcolor=yellow"
-            f":fontsize={fonte}"
-            f":box=1"
-            f":boxcolor=black@0.75"
-            f":boxborderw=20"
-            f":x=(w-text_w)/2"
-            f":y={y}"
-            f":fontfile=C\\\\:/Windows/Fonts/arial.ttf"
-            f":borderw=4"
-        )
+    filtro = (
+        f"drawtext=text='{linhas_texto_esc}'"
+        f":fontcolor=black"
+        f":fontsize={fonte}"
+        f":box=1"
+        f":boxcolor=white"
+        f":boxborderw=30"
+        f":x=(w-text_w)/2"
+        f":y=(h-text_h)/2"
+        f":fontfile=C\\\\:/Windows/Fonts/arial.ttf"
+        f":line_spacing=15"
+    )
 
     cmd = [
         "ffmpeg", "-y",
         "-i", fix_path(video_path),
         "-vframes", "1",
         "-update", "1",
-        "-vf", ",".join(filtros),
+        "-vf", filtro,
         "-q:v", "2",
         fix_path(output_path)
     ]
@@ -303,9 +313,14 @@ def publicar_video(video_path, thumbnail_url, titulo, caption, upload_post_key, 
 
 
 def main():
-    # Parse -c <character> flag
+    # Parse flags
     args = sys.argv[1:]
     character_id = DEFAULT_CHARACTER
+    do_publish = False  # Não publica por padrão
+
+    if "--publish" in args:
+        do_publish = True
+        args.remove("--publish")
 
     if "-c" in args:
         idx = args.index("-c")
@@ -317,8 +332,9 @@ def main():
             sys.exit(1)
 
     if len(args) < 4:
-        print("Uso: python post_process.py [-c <character>] <video.mp4> <audio.mp3> <hook_text> <output_dir> [caption_file] [scheduled_date]")
+        print("Uso: python post_process.py [-c <character>] [--publish] <video.mp4> <audio.mp3> <hook_text> <output_dir> [caption_file] [scheduled_date]")
         print(f"Personagens disponíveis: {', '.join(CHARACTER_PROFILES.keys())}")
+        print(f"  --publish  Publica automaticamente nas redes (desativado por padrão)")
         sys.exit(1)
 
     video_path = args[0]
@@ -369,7 +385,7 @@ def main():
     upload_key = os.environ.get("UPLOAD_POST_KEY", "")
     fal_key = os.environ.get("FAL_KEY", "")
 
-    if upload_key and profile:
+    if do_publish and upload_key and profile:
         thumbnail_url = None
         if fal_key:
             print("    Fazendo upload do thumbnail para fal.ai...")
@@ -388,7 +404,9 @@ def main():
             scheduled_date=scheduled
         )
     else:
-        if not upload_key:
+        if not do_publish:
+            print("Publicação desativada (use --publish para ativar).")
+        elif not upload_key:
             print("UPLOAD_POST_KEY nao configurado — pulando publicacao.")
         elif not profile:
             print(f"Sem perfil de publicação para '{character_id}' — pulando publicacao.")
