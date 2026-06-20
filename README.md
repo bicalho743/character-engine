@@ -1,297 +1,187 @@
-# OpenShorts.app
+# 🎬 OpenShorts.app & Character Engine (Fábrica de Personagens)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Open Source](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://opensource.org/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
-[![GitHub stars](https://img.shields.io/github/stars/mutonby/openshorts?style=social)](https://github.com/mutonby/openshorts)
-[![Last Commit](https://img.shields.io/github/last-commit/mutonby/openshorts)](https://github.com/mutonby/openshorts/commits/main)
 
-**Free & open source AI video platform** with 3 tools in one: **Clip Generator**, **AI Shorts (UGC videos with AI actors)**, and **YouTube Studio**. Self-hosted with Docker. No watermarks, no limits.
-
-https://github.com/user-attachments/assets/b45fa983-16b4-48b5-ac5b-a267836b9ad9
-
-
-
-### Video Tutorial: How it works
-[![OpenShorts Tutorial](https://img.youtube.com/vi/xlyjD1qCaX0/maxresdefault.jpg)](https://www.youtube.com/watch?v=xlyjD1qCaX0 "Click to watch the video on YouTube")
-
-*Click the image above to watch the full walkthrough.*
+Uma plataforma integrada de vídeo com inteligência artificial para **geração de cortes virais**, **criação de vídeos UGC com atores de IA (SaaS/Produtos)** e uma **Fábrica de Personagens virtuais com identidade própria ("alma")**. Este repositório oferece ferramentas via interface gráfica (painel web FastAPI/Vite) e via CLI (linha de comando).
 
 ---
 
-## 3 Tools in 1 Platform
+## 📌 Visão Geral das Funcionalidades
 
-### 1. Clip Generator
-Turn your long-form videos — podcasts, webinars, livestreams, vlogs, interviews — into viral-ready 9:16 shorts for TikTok, Instagram Reels, and YouTube Shorts.
+### 1. Clip Generator (Gerador de Cortes)
+Transforma vídeos longos (podcasts, entrevistas, aulas) em vídeos verticais (9:16) ideais para TikTok, Instagram Reels e YouTube Shorts.
+- **Detecção de Momentos Virais**: Analisa a transcrição com IA (Google Gemini 3.0/3.5) para isolar de 3 a 15 trechos de alto engajamento.
+- **Corte Inteligente 9:16 (Active Speaker Tracking)**: Rastreia o locutor usando MediaPipe e YOLOv8 com estabilização inteligente (Heavy Tripod).
+- **Legendas Automáticas**: Transcrição rápida com word-level timestamps e queima de legendas estilizadas no vídeo.
+- **Dublagem com IA**: Tradução de voz automática mantendo o tom e a emoção original (via ElevenLabs).
 
-![Clip Results](screenshots/clip-results.png)
+### 2. AI Shorts / UGC Creator (Criador de Vídeos de Marketing)
+Gera vídeos publicitários a partir de uma URL ou descrição curta de um produto ou serviço.
+- **Pesquisa e Análise de Mercado**: Scrape automático do site e pesquisa no Google Search (via Gemini) buscando depoimentos reais, concorrentes e dores dos clientes.
+- **Roteirização Viral**: Cria roteiros no formato gancho (hook) -> problema -> solução -> CTA.
+- **Atores Virtuais**: Geração de retratos hiper-realistas com Flux 2 Pro ou Recraft V4 e animação facial sincronizada com a voz (Kling Avatar v2 ou Hailuo + VEED).
 
-### 2. AI Shorts (UGC Video Creator)
-Generate marketing videos with AI actors for **any product or business**. No camera, no studio, no influencer budget. Just describe your product or paste a URL.
-
-![AI Shorts Setup](screenshots/ai-shorts.png)
-
-- **Two cost modes**: Low Cost (~$0.65/video) and Premium (~$2/video)
-- Works for any business: SaaS, restaurants, e-commerce, coaching, local businesses
-- AI-generated actors with lip-sync, voiceover, b-roll, and TikTok-style subtitles
-- Choose from a shared avatar gallery or upload your own photo
-- Publish directly to TikTok, Instagram, and YouTube
-
-### 3. YouTube Studio
-Complete free AI YouTube toolkit: thumbnails, titles, descriptions, and direct publishing.
-
-![YouTube Studio](screenshots/youtube-studio.png)
-
-- AI thumbnail generator with face overlay
-- 10 viral title suggestions with refinement chat
-- Auto-generated descriptions with chapter timestamps
-- One-click publish to YouTube
-
-### UGC Video Gallery
-All generated videos and avatars are saved to a public gallery with SEO pages for each video.
-
-![UGC Gallery](screenshots/ugc-gallery.png)
-
-- Public gallery page with hover-to-play (`/gallery`)
-- Individual SEO video pages with og:video meta tags (`/video/{id}`)
-- JSON-LD structured data for search engines
-- Avatar gallery with prompt history
+### 3. Fábrica de Personagens Fixos (Character Engine)
+Motor CLI projetado para criar e alimentar canais de personagens virtuais fixos de forma totalmente automatizada.
+- **Arquitetura 1 Motor, N Personagens**: Cada personagem possui sua própria pasta de configuração (`persona.md`, `character.yaml`, `topics.yaml`).
+- **Fila de Tópicos Automática**: Consome temas em sequência e gerencia o status de postagem.
+- **Pós-processador Avançado**: Adiciona legendas de alto impacto, gera capas personalizadas (thumbnails) e publica ou agenda nas redes sociais através da API do Upload-Post.
 
 ---
 
-## Key Features
+## 🗺️ Estrutura do Repositório e Lista Completa de Funções
 
-### Clip Generator
-- **Viral Moment Detection**: Google Gemini 3.0 Flash analyzes transcripts and scene boundaries to detect 3-15 high-potential moments
-- **Smart 9:16 Cropping**: Dual-mode AI reframing — TRACK mode (MediaPipe + YOLOv8 face tracking) and GENERAL mode (blurred background)
-- **Auto Subtitles**: faster-whisper with word-level timestamps, styled and burned into clips
-- **AI Voice Dubbing**: ElevenLabs integration for 30+ languages with voice cloning
-- **Hook Text Overlays**: AI-generated attention-grabbing text overlays
-- **AI Video Effects**: Gemini-generated FFmpeg filters for professional effects
-
-### AI Shorts Pipeline
-1. **Analyze**: Scrape website URL + web research, or generate from manual description
-2. **Script**: AI writes viral scripts (hook - problem - solution - CTA format)
-3. **Actor**: Generate AI actors with Flux 2 Pro or select from shared gallery
-4. **Voice**: ElevenLabs TTS voiceover (English/Spanish, male/female)
-5. **Video**: Talking head generation (Hailuo 2.3 Fast img2video + VEED Lipsync)
-6. **B-roll**: AI-generated visuals with Ken Burns effect
-7. **Composite**: FFmpeg final assembly with subtitles and hook overlays
-8. **Publish**: Direct posting to TikTok, Instagram Reels, YouTube Shorts via Upload-Post
-
-### YouTube Studio
-- AI-powered title generation with 10 viral options
-- Interactive refinement chat for titles
-- AI thumbnail generation with custom face + background
-- Auto descriptions with chapter timestamps from Whisper transcript
-- Direct YouTube publishing via Upload-Post
-
-### Social Auto-Publishing
-- **One-click posting** to TikTok, Instagram Reels, and YouTube Shorts simultaneously
-- **Schedule uploads** for any date and time — plan your content calendar and let OpenShorts publish automatically
-- **Multi-platform distribution** — publish to all your social networks at once from a single interface
-- Upload-Post integration with async uploads
-
-### Infrastructure
-- S3 cloud backup (private bucket for clips, public bucket for gallery/avatars)
-- SEO gallery pages served by FastAPI with JSON-LD structured data
-- Shared avatar gallery across all users
-- Async job queue with configurable concurrency
+Abaixo estão detalhados todos os arquivos e scripts que constituem o sistema, acompanhados de suas respectivas classes, métodos e fluxos de execução.
 
 ---
 
-## Who Is This For?
+### 📂 CLI & Controle de Personagens
 
-- **Content creators** — Turn long videos into shorts automatically, publish to all platforms at once
-- **Marketing agencies** — Generate UGC videos for clients at scale, no actors or studios needed
-- **SaaS founders** — Create product demos and marketing shorts from just a URL
-- **E-commerce brands** — Product videos with AI actors for TikTok Shop, Instagram, YouTube
-- **Local businesses** — Restaurants, gyms, real estate, coaching — affordable video marketing
-- **Developers** — Self-host, customize the pipeline, integrate via API
+#### 📄 [generate_character.py](file:///c:/2 - PERSONAGENS/character-engine/generate_character.py)
+Script de interface de linha de comando (CLI) para a geração de roteiros, vozes e vídeos de personagens baseados em suas personas e tópicos pendentes.
+*   `list_characters()`: Varre a pasta `characters/` e lista os personagens que possuem um arquivo `character.yaml` válido.
+*   `list_topics(character_id)`: Lê a lista de tópicos em `topics.yaml` para o personagem informado.
+*   `print_script(script)`: Exibe o roteiro gerado no console com marcações de blocos, narração detalhada e ideias de b-roll.
+*   `save_script(script, topic, output_dir)`: Salva os arquivos de roteiro nos formatos JSON, TXT e o texto da legenda/caption em arquivos individuais.
+*   `generate_voiceover(text, voice_id, elevenlabs_key, output_path, voice_settings)`: Converte o texto do roteiro em áudio usando a API do ElevenLabs (modelo `eleven_multilingual_v2`), aplicando configurações de estabilidade e clareza.
+*   `generate_kling_avatar(image_path, audio_path, fal_key, output_path)`: Envia o avatar base e o áudio da narração para a API do Kling (via fal.ai) para gerar o vídeo do personagem falando de forma realista.
 
----
+#### 📄 [post_process.py](file:///c:/2 - PERSONAGENS/character-engine/post_process.py)
+Realiza todo o pós-processamento necessário no vídeo falante gerado. Cuida de legendagem, criação de capas e publicação automatizada.
+*   `remove_acentos(texto)`: Normaliza strings removendo acentos para uso na geração de mídias do FFmpeg.
+*   `get_video_dimensions(video_path)`: Obtém largura e altura do vídeo com `ffprobe`.
+*   `gerar_srt(audio_path, srt_path)`: Transcreve o áudio usando `faster-whisper` com word-level timestamps e agrupa as palavras em blocos curtos de legenda (limite de 6 palavras ou 32 caracteres por bloco).
+*   `gerar_video_legendado(video_path, srt_path, hook_text, output_path)`: Aplica as legendas em formato SRT diretamente no vídeo (burn-in) com estilo personalizado e fontes do Windows usando FFmpeg.
+*   `gerar_thumbnail(video_path, hook_text, output_path)`: Cria uma imagem estática a partir de um frame do vídeo com o texto do gancho (hook) formatado em caixa preta e fundo branco (estilo TikTok).
+*   `inserir_thumbnail_no_video(video_path, thumbnail_path, output_path)`: Insere a capa (thumbnail) como o primeiro segundo de frame do vídeo. Útil para que o Instagram Reels a use automaticamente como capa do vídeo.
+*   `publicar_video(video_path, thumbnail_url, titulo, caption, upload_post_key, perfis, ...)`: Envia o vídeo e metadados para as redes sociais (Instagram Reels, TikTok, YouTube Shorts, X) através da API do Upload-Post. Suporta agendamentos futuros.
 
-## AI Shorts Showcase
+#### 📄 [character_shorts.py](file:///c:/2 - PERSONAGENS/character-engine/character_shorts.py)
+Módulo interno que implementa as regras da "alma" e formatação de prompt para os personagens.
+*   `load_character(character_id)`: Carrega a configuração (`character.yaml`), as definições de personalidade (`persona.md`) e os tópicos (`topics.yaml`) do diretório do personagem.
+*   `pick_next_topic(character, mark_done)`: Seleciona o próximo tema pendente da fila do personagem e atualiza o status para `done` se solicitado.
+*   `generate_character_script(character, topic, openai_key, gemini_key)`: Constrói os prompts detalhados e utiliza OpenAI (GPT-4o-Mini) ou Google Gemini (Gemini 2.5 Flash) para gerar o roteiro estruturado no formato JSON com as tags de modulação de voz ElevenLabs (ex: `[serious]`, `[soft]`, `[calm]`).
 
-Videos generated with OpenShorts AI Shorts — no camera, no studio, no actors:
-
-| | | |
-|:---:|:---:|:---:|
-| [![Biohacking for Investors](https://test-videos-upload-post.s3.eu-west-3.amazonaws.com/videos/cdceec1b/actor.png)](https://openshorts.app/video/cdceec1b) | [![Secret Weapon for Devs](https://test-videos-upload-post.s3.eu-west-3.amazonaws.com/videos/d3a80b6b/actor.png)](https://openshorts.app/video/d3a80b6b) | [![El Secreto de los Agentes de IA](https://test-videos-upload-post.s3.eu-west-3.amazonaws.com/videos/8ab7de92/actor.png)](https://openshorts.app/video/8ab7de92) |
-| **Biohacking for Investors** · LOW COST | **Secret Weapon for Devs** · LOW COST | **El Secreto de los Agentes de IA** · PREMIUM |
-
-> Browse all videos at [openshorts.app/gallery](https://openshorts.app/gallery)
-
----
-
-## OpenShorts vs Competitors
-
-| Feature | OpenShorts | Opus Clip | CapCut | Vizard | Klap | Descript |
-|---------|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Price** | **Free** | $15-29/mo | $8/mo | $15-20/mo | $23-63/mo | $24-65/mo |
-| **Self-hosted** | **Yes** | No | No | No | No | No |
-| **Open source** | **Yes** | No | No | No | No | No |
-| **Watermark** | **Never** | Free tier | Some | Free tier | Free tier | Free tier |
-| **Upload limits** | **None** | 10-30GB | Credit-based | 60min-10hr | 10-100 vids/mo | 60min-40hr |
-| **AI clip detection** | Yes | Yes | Yes | Yes | Yes | Yes |
-| **Smart 9:16 reframing** | Yes | Yes | Yes | Yes | Yes | No |
-| **Auto subtitles** | Yes | Yes | Yes | Yes | Yes | Yes |
-| **Voice dubbing (30+ langs)** | Yes | No | Pro only | No | Pro only | Business only |
-| **AI UGC actors** | **Yes** | No | No | No | No | No |
-| **AI video effects** | Yes | No | Yes | No | No | No |
-| **Hook text overlays** | Yes | No | No | No | No | No |
-| **YouTube Studio (titles, thumbnails)** | **Yes** | No | No | No | No | No |
-| **Social auto-publishing** | Yes | Pro only | TikTok only | Paid only | Paid only | No |
-| **Schedule uploads** | Yes | Pro only | No | Paid only | Paid only | No |
-| **Data privacy** | **Your server** | Their cloud | Their cloud | Their cloud | Their cloud | Their cloud |
+#### 📄 [run_batch.py](file:///c:/2 - PERSONAGENS/character-engine/run_batch.py)
+Script utilitário para agendar e gerar múltiplos vídeos de personagens em lote (batch).
+*   `main()`: Lê uma lista de tarefas agendadas, gera os vídeos chamando sequencialmente `generate_character.py` com o argumento `--from-script` e executa o pós-processamento `post_process.py` agendando cada postagem.
 
 ---
 
-## How Much Does It Cost?
+### 📂 Pipeline de Processamento de Vídeo
 
-OpenShorts is free. You only pay for the AI APIs you use — and most have generous free tiers:
+#### 📄 [main.py](file:///c:/2 - PERSONAGENS/character-engine/main.py)
+O coração do pipeline do abridor de vídeos (Clip Generator). Contém toda a lógica de enquadramento automático e identificação de clipes.
+*   **Classe `SmoothedCameraman`**:
+    *   `update_target(face_box)`: Atualiza o ponto focal horizontal da câmera com base na posição da face detectada.
+    *   `get_crop_box(force_snap)`: Calcula a janela de recorte 9:16 aplicando amortecimento linear e zona de segurança (Heavy Tripod) para evitar oscilações.
+*   **Classe `SpeakerTracker`**:
+    *   `get_target(face_candidates, frame_number, width)`: Rastreia as faces identificadas ao longo dos frames e gerencia a quem a câmera deve focar, prevenindo cortes e transições bruscas de câmera caso outra pessoa passe na frente.
+*   `detect_face_candidates(frame)`: Executa a detecção facial ultrarrápida usando o detector do MediaPipe.
+*   `detect_person_yolo(frame)`: Método fallback que detecta pessoas usando YOLOv8 caso o detector facial não encontre rostos.
+*   `create_general_frame(frame, output_width, output_height)`: Cria o layout de plano geral com fundo borrado (blur) e vídeo horizontal centralizado para segmentos com múltiplos interlocutores ou paisagens.
+*   `analyze_scenes_strategy(video_path, scenes)`: Analisa frames de cada cena identificada para decidir se o enquadramento deve ser individual (`TRACK`) ou plano aberto (`GENERAL`).
+*   `detect_scenes(video_path)`: Utiliza PySceneDetect para encontrar limites lógicos de cortes de cena no vídeo original.
+*   `download_youtube_video(url, output_dir)`: Faz o download de vídeos do YouTube de forma robusta contornando rate limits através do `yt-dlp`.
+*   `process_video_to_vertical(input_video, final_output_video)`: Orquestra o processamento frame a frame do vídeo horizontal para vertical mesclando as trilhas de vídeo ajustada e áudio copiado.
+*   `transcribe_video(video_path)`: Transcreve o vídeo por completo usando `faster-whisper` e gera metadados contendo timestamps por palavra.
+*   `get_viral_clips(transcript_result, video_duration)`: Envia a transcrição integral ao Gemini para que selecione os clipes com maior potencial de viralização.
 
-| Service | Free Tier | Paid Cost | Used For |
-|---------|-----------|-----------|----------|
-| **Google Gemini** | Free trial with generous limits | < $0.01 per 10-min video | Viral moment detection, script generation, web research |
-| **fal.ai** | Pay-per-use | ~$0.50-1.50 per AI Short | Actor generation, talking head video, lip-sync |
-| **ElevenLabs** | Free tier available | Pay-per-use | Voiceover, voice dubbing |
-| **Upload-Post** | **10 free uploads/month** to all networks (no credit card) | Pay-per-use | Auto-publishing to TikTok, Instagram, YouTube |
-| **AWS S3** | Optional | ~$0.023/GB | Cloud backup for clips and gallery |
+#### 📄 [saasshorts.py](file:///c:/2 - PERSONAGENS/character-engine/saasshorts.py)
+Script responsável por gerar vídeos UGC para SaaS de maneira automatizada a partir de links públicos.
+*   `research_saas_online(url, gemini_key)`: Executa pesquisas na web com Google Search Grounding usando Gemini para encontrar avaliações, reclamações e pontos fortes da marca.
+*   `scrape_website(url)`: Varre a página principal e as subpáginas mais relevantes do SaaS capturando textos estruturados.
+*   `analyze_saas(scraped_data, gemini_key, web_research)`: Processa o conteúdo do site e a pesquisa externa gerando um dossiê com públicos-alvo, dores principais e ganchos de atração.
+*   `generate_scripts(analysis, gemini_key, num_scripts, style, ...)`: Roteiriza os vídeos baseados no público desejado respeitando uma estrutura rígida de 5 segmentos.
+*   `generate_actor_images(description, fal_key, output_dir, title_slug, ...)`: Gera alternativas de fotos para o ator da campanha utilizando Flux 2 Pro no fal.ai.
+*   `generate_voiceover(text, elevenlabs_key, output_path, voice_id)`: Gera a narração da propaganda.
 
-**Bottom line:** You can clip videos for practically free with Gemini, and publish 10 videos/month to all social networks at zero cost with Upload-Post.
+#### 📄 [editor.py](file:///c:/2 - PERSONAGENS/character-engine/editor.py)
+Fornece integração com o Gemini para analisar vídeos e criar filtros dinâmicos de FFmpeg (correção de cor, corte de silêncio, zoom panorâmico, aplicação de vinheta).
+*   `upload_video(file_path)`: Faz upload do arquivo temporário para a API de arquivos do Gemini.
+*   `get_ffmpeg_filter(video_file, duration, ...)`: Solicita ao Gemini que assista ao vídeo e sugira uma string de filtros complexos do FFmpeg.
+*   `apply_edits(input_path, output_path, filter_data)`: Executa a linha de comando do FFmpeg aplicando os filtros determinados pela IA.
 
 ---
 
-## Requirements
+### 📂 Integração com API (FastAPI)
 
-- **Docker & Docker Compose**
-- **Google Gemini API Key** ([Free — get it here](https://aistudio.google.com/app/apikey)) — required for all AI features
-- **fal.ai API Key** ([Pay-per-use](https://fal.ai)) — required for AI Shorts (actor generation, video, lip-sync)
-- **ElevenLabs API Key** ([Free tier](https://elevenlabs.io)) — required for voiceover/dubbing
-- **Upload-Post API Key** ([free tier](https://upload-post.com)) — required for direct social posting
+#### 📄 [app.py](file:///c:/2 - PERSONAGENS/character-engine/app.py)
+Servidor HTTP FastAPI que provê a API para o painel de controle web (Dashboard React).
+*   **Fila Assíncrona de Tarefas**: Implementa um loop baseado em `asyncio.Queue` controlado pelo semáforo `concurrency_semaphore` (definido por `MAX_CONCURRENT_JOBS`).
+*   `cleanup_jobs()`: Tarefa em segundo plano que purga arquivos temporários de uploads e saídas a cada 1 hora.
+*   **Endpoints Principais**:
+    *   `POST /api/process`: Inicia o processamento de um novo vídeo horizontal (via upload de arquivo ou URL do YouTube) gerando os cortes verticais.
+    *   `GET /api/status/{job_id}`: Retorna os logs de progresso e resultados de um job.
+    *   `POST /api/edit`: Aplica filtros de vídeo inteligentes via `editor.py`.
+    *   `POST /api/subtitle`: Gera e queima legendas personalizadas.
+    *   `POST /api/translate`: Executa a tradução e dublagem de voz do clipe selecionado.
+    *   `POST /api/render`: Faz proxy com o microsserviço Node.js de renderização do Remotion.
+    *   `POST /api/social/post`: Agenda ou realiza a postagem direta dos vídeos processados no Instagram/TikTok/YouTube.
 
 ---
 
-## Getting Started
+### 📂 Utilitários de Apoio
 
-### 1. Clone
+*   **[s3_uploader.py](file:///c:/2 - PERSONAGENS/character-engine/s3_uploader.py)**: Responsável pelas operações de backup e hospedagem em buckets da AWS S3 (armazenamento privado de cortes e público de galeria de vídeos e avatares).
+*   **[subtitles.py](file:///c:/2 - PERSONAGENS/character-engine/subtitles.py)**: Utilitários auxiliares para converter transcrições em arquivos `.srt` e queimar legendas.
+*   **[thumbnail.py](file:///c:/2 - PERSONAGENS/character-engine/thumbnail.py)**: Gerador automatizado de capas de vídeo do YouTube e títulos chamativos baseado no conteúdo transcrito.
+*   **[translate.py](file:///c:/2 - PERSONAGENS/character-engine/translate.py)**: Gerencia o fluxo de tradução e dublagem de voz utilizando ElevenLabs.
+*   **[hooks.py](file:///c:/2 - PERSONAGENS/character-engine/hooks.py)**: Utilitário baseado em Pillow (PIL) para renderização e posicionamento de overlays de ganchos textuais (hooks) em vídeo.
+
+---
+
+## 🛠️ Scripts de Validação
+
+O projeto conta com scripts dedicados à verificação local rápida de estética e geração de sobreposições de imagens:
+- **`verify_aesthetic.py`**: Gera e valida a qualidade estética do texto de hook com efeito de sombra.
+- **`verify_hooks.py`**: Valida se o pipeline do Pillow consegue criar e salvar com sucesso os arquivos de imagens dos ganchos textuais.
+- **`verify_custom_hook.py`**: Testa o redimensionamento dinâmico e o posicionamento do hook no vídeo final.
+
+---
+
+## 🚀 Como Iniciar
+
+### Requisitos Mínimos
+- Python 3.10 ou superior instalado localmente.
+- Docker e Docker Compose (caso opte pela execução em contêineres).
+- FFmpeg configurado no PATH do sistema.
+
+### Configuração (.env)
+Copie o arquivo `.env.example` para `.env` e preencha as chaves de API necessárias:
 ```bash
-git clone https://github.com/your-username/OpenShorts.git
-cd OpenShorts
+GEMINI_API_KEY=...        # Obtenha em aistudio.google.com (Uso geral do sistema)
+FAL_KEY=...               # Obtenha em fal.ai (Geração de imagens de Atores/Kling)
+ELEVENLABS_API_KEY=...    # Obtenha em elevenlabs.io (Geração de Voz/Dublagem)
+UPLOAD_POST_KEY=...       # Obtenha em upload-post.com (Agendamento de Redes Sociais)
+AWS_ACCESS_KEY_ID=...     # Opcional (Para Backup em Nuvem S3)
+AWS_SECRET_ACCESS_KEY=... # Opcional
 ```
 
-### 2. Configure (optional)
-```bash
-cp .env.example .env
-# Edit .env with your AWS keys for S3 backup
-```
-
-### 3. Launch
+### Inicializando a Dashboard Web (Via Docker)
+Para rodar a plataforma completa (Backend + Dashboard Frontend + Renderizador Remotion):
 ```bash
 docker compose up --build
 ```
+Acesse o painel web através do endereço **`http://localhost:5175`**.
 
-### 4. Open Dashboard
-Navigate to **`http://localhost:5175`**
+### Inicializando a Fábrica de Personagens (CLI)
+Para operar a geração e publicação de personagens fixos usando os scripts locais:
 
-1. Go to **Settings** and enter your API keys (Gemini, fal.ai, ElevenLabs, Upload-Post)
-2. **Clip Generator**: Upload a long-form video to generate viral shorts
-3. **AI Shorts**: Describe your product or paste a URL to generate UGC marketing videos
-4. **YouTube Studio**: Generate thumbnails, titles, and descriptions for YouTube
-5. **UGC Gallery**: Browse all generated videos and avatars
+```bash
+# Instale as dependências
+pip install -r requirements.txt
 
----
+# 1. Listar personagens ativos
+python generate_character.py --list-characters
 
-## Technical Pipeline
+# 2. Testar a roteirização de um tema específico (sem custos extras de vídeo)
+python generate_character.py -c frei_miguel_lucero --next --script-only
 
-### Clip Generator
-1. **Ingest** — Local video upload (or self-hosted URL ingest via yt-dlp)
-2. **Transcribe** — faster-whisper with word-level timestamps
-3. **Detect** — PySceneDetect for scene boundaries
-4. **Analyze** — Gemini identifies 3-15 viral moments (15-60s each)
-5. **Extract** — FFmpeg precise clip cutting
-6. **Reframe** — AI vertical cropping with subject tracking
-7. **Effects** — Subtitles, hooks, AI video effects
-8. **Publish** — S3 backup + Upload-Post social distribution
+# 3. Gerar o vídeo completo a partir de um roteiro revisado e aprovado
+python generate_character.py -c frei_miguel_lucero --from-script output/frei_miguel_lucero/tema_roteiro.json
 
-### AI Shorts
-1. **Analyze** — Website scraping + Gemini web research (or manual description)
-2. **Script** — Gemini generates viral scripts with segments
-3. **Actor** — Flux 2 Pro portrait generation (or gallery/upload)
-4. **Voice** — ElevenLabs TTS voiceover
-5. **Video** — Hailuo 2.3 Fast img2video + VEED Lipsync (Low Cost) or Kling Avatar v2 (Premium)
-6. **B-roll** — Flux 2 Pro image generation + Ken Burns effect
-7. **Composite** — FFmpeg assembly with ASS subtitles and hook overlays
-8. **Gallery** — Upload to public S3 with metadata for SEO pages
-9. **Publish** — Upload-Post to TikTok, Instagram, YouTube
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Backend | Python 3.11, FastAPI, google-genai, faster-whisper, ultralytics (YOLOv8), mediapipe, opencv-python, yt-dlp, FFmpeg, httpx |
-| Frontend | React 18, Vite 4, Tailwind CSS 3.4 |
-| AI APIs | Google Gemini, fal.ai (Flux, Hailuo, VEED, Kling), ElevenLabs |
-| Infrastructure | Docker + Docker Compose, AWS S3 |
-| Publishing | Upload-Post API (TikTok, Instagram, YouTube) |
-
----
-
-## Environment Variables
-
-**Server-side (.env):**
-| Variable | Description |
-|----------|------------|
-| `AWS_ACCESS_KEY_ID` | AWS access key for S3 |
-| `AWS_SECRET_ACCESS_KEY` | AWS secret key |
-| `AWS_REGION` | AWS region (default: us-east-1) |
-| `AWS_S3_BUCKET` | Private bucket for clip backup |
-| `AWS_S3_PUBLIC_BUCKET` | Public bucket for gallery/avatars |
-| `MAX_CONCURRENT_JOBS` | Concurrent processing limit (default: 5) |
-
-**Client-side (encrypted in localStorage):**
-| Key | Description |
-|-----|------------|
-| `GEMINI_API_KEY` | Google Gemini — required |
-| `FAL_KEY` | fal.ai — required for AI Shorts |
-| `ELEVENLABS_API_KEY` | ElevenLabs — required for voiceover/dubbing |
-| `UPLOAD_POST_API_KEY` | Upload-Post — required, for social posting |
-
----
-
-## Security & Performance
-
-- **Non-Root Execution**: Containers run as dedicated `appuser`
-- **Concurrency Control**: Semaphore-based job queue (`MAX_CONCURRENT_JOBS`)
-- **Auto-Cleanup**: Automatic purging of old jobs (1h retention)
-- **Encrypted Keys**: API keys encrypted client-side, never stored server-side
-- **Upload Validation**: Image uploads validated for format and minimum size
-- **File Limits**: 2GB upload limit protection
-
----
-
-## Social Media Setup (Upload-Post)
-
-1. **Register**: [app.upload-post.com/login](https://app.upload-post.com/login)
-2. **Create Profile**: Go to [Manage Users](https://app.upload-post.com/manage-users)
-3. **Connect Accounts**: Link TikTok, Instagram, and/or YouTube
-4. **Get API Key**: Navigate to [API Keys](https://app.upload-post.com/api-keys)
-5. **Use in OpenShorts**: Paste the key in Settings
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=mutonby/openshorts&type=Date)](https://star-history.com/#mutonby/openshorts&Date)
-
-## Contributions
-
-Contributions are welcome! Whether it's adding new AI models, improving the lip-sync pipeline, or building new features — feel free to open a PR.
-
-## License
-
-MIT License. OpenShorts is yours to use, modify, and scale.
+# 4. Processar e publicar o vídeo gerado imediatamente nas redes configuradas
+python post_process.py -c frei_miguel_lucero --publish output/frei_miguel_lucero/video_final.mp4 output/frei_miguel_lucero/video_voice.mp3 "Texto de Gancho" output/final_post/
+```
